@@ -1,8 +1,6 @@
 import os
-import random
 import numpy as np
 from scipy.spatial.distance import cdist
-from sklearn.cluster import KMeans
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib
 matplotlib.use('TkAgg')
@@ -15,16 +13,16 @@ BOUND_POSITION = "clip"  # "clip", "reflection"
 
 
 def load_iamge(image_path):
-    image_original = Image.open(image_path).convert("RGB")
+    image_original = Image.open(image_path).convert("L")
     width, height = image_original.size
     print(f"Image size:{width}w, {height}h")
-    rgb_values_original = np.array(image_original.getdata())
-    return rgb_values_original, width, height
+    grey_values_original = np.array(image_original.getdata())  # now this will be a 1D array
+    return grey_values_original, width, height
 
 
-def evaluate_palette_fitness(palette, rgb_values_original):
+def evaluate_palette_fitness(palette, grey_values_original):
     """Fitness score = squared Euclidean distance between pixels and palette"""
-    distances = cdist(rgb_values_original, palette, metric='sqeuclidean')
+    distances = cdist(grey_values_original[:, None], palette[:, None], metric='sqeuclidean')
     min_distances = np.min(distances, axis=1)
     return np.sum(min_distances)
 
@@ -50,45 +48,45 @@ def apply_bounding(values, bound_type="clip", lower=0, upper=255):
         return np.clip(values, lower, upper)  # if still out of bounds after reflection, we do a clip
 
 
-def visualize_and_save_palette(palette, iteration):
-    """Display and save palette"""
-    fig, ax = plt.subplots(figsize=(6, 2))
+# def visualize_and_save_palette(palette, iteration):
+#     """Display and save palette"""
+#     fig, ax = plt.subplots(figsize=(6, 2))
+#
+#     for i, color in enumerate(palette):
+#         rect = plt.Rectangle((i, 0), 1, 1, color=color / 255)
+#         ax.add_patch(rect)
+#         ax.text(i + 0.5, -0.4, f'R: {int(color[0])}', ha='center', fontsize=10)
+#         ax.text(i + 0.5, -0.6, f'G: {int(color[1])}', ha='center', fontsize=10)
+#         ax.text(i + 0.5, -0.8, f'B: {int(color[2])}', ha='center', fontsize=10)
+#
+#     ax.set_xlim(0, len(palette))
+#     ax.set_ylim(0, 1)
+#     ax.set_xticks([])
+#     ax.set_yticks([])
+#     ax.set_frame_on(False)
+#
+#     plt.title(f"Global Best Palette (Iteration {iteration+1})")
+#     plt.savefig(f"{OUTPUT_DIR_RESULTS}/palette_iter_{iteration+1}.png", bbox_inches='tight', dpi=150)
+#     plt.show()
 
-    for i, color in enumerate(palette):
-        rect = plt.Rectangle((i, 0), 1, 1, color=color / 255)
-        ax.add_patch(rect)
-        ax.text(i + 0.5, -0.4, f'R: {int(color[0])}', ha='center', fontsize=10)
-        ax.text(i + 0.5, -0.6, f'G: {int(color[1])}', ha='center', fontsize=10)
-        ax.text(i + 0.5, -0.8, f'B: {int(color[2])}', ha='center', fontsize=10)
 
-    ax.set_xlim(0, len(palette))
-    ax.set_ylim(0, 1)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_frame_on(False)
-
-    plt.title(f"Global Best Palette (Iteration {iteration+1})")
-    plt.savefig(f"{OUTPUT_DIR_RESULTS}/palette_iter_{iteration+1}.png", bbox_inches='tight', dpi=150)
-    plt.show()
-
-
-def cluster_recreate_image_with_palette(rgb_values_original, palette, width, height, iteration, img_name):
+def cluster_recreate_image_with_palette(grey_values_original, palette, width, height, iteration, img_name):
     """
     Assigns each pixel to the closest color in the palette, reconstructs the image,
-    and appends the best palette with RGB labels below it before saving.
+    and appends the best palette with grey labels below it before saving.
     """
 
     # compute Euclidean distance between each pixel and each color in the palette
-    distances = cdist(rgb_values_original, palette, metric='sqeuclidean')
+    distances = cdist(grey_values_original[:, None], palette[:, None], metric='sqeuclidean')
 
     # for each pixel, find the index of the closest color in the palette
     closest_palette_indices = np.argmin(distances, axis=1)
 
     # replace each pixel with the corresponding palette color
-    clustered_image = palette[closest_palette_indices]
+    clustered_image = palette[closest_palette_indices].astype(np.uint8)
 
-    clustered_image = clustered_image.reshape((height, width, 3)).astype(np.uint8)
-    clustered_img = Image.fromarray(clustered_image)
+    clustered_array = clustered_image.reshape((height, width))
+    clustered_img = Image.fromarray(clustered_array, mode='L')
 
     # visualisation settings
     palette_height = 50
@@ -98,33 +96,34 @@ def cluster_recreate_image_with_palette(rgb_values_original, palette, width, hei
     total_height = height + palette_height + spacing + text_height
 
     combined_img = Image.new("RGB", (width, total_height), (255, 255, 255))
-    combined_img.paste(clustered_img, (0, 0))
+    clustered_rgb = clustered_img.convert('RGB')
+    combined_img.paste(clustered_rgb, (0, 0))
 
     # palette visualization
-    palette_image = np.zeros((palette_height, palette_width, 3), dtype=np.uint8)
+    palette_image = np.zeros((palette_height, palette_width), dtype=np.uint8)
     num_colors = len(palette)
     segment_width = palette_width // num_colors
 
-    for i, color in enumerate(palette):
+    for i, intensity in enumerate(palette):
         start_x = i * segment_width
         end_x = (i + 1) * segment_width if i < num_colors - 1 else palette_width
-        palette_image[:, start_x:end_x] = color
+        palette_image[:, start_x:end_x] = intensity
 
     # convert palette to PIL and put it below the reconstructed image
-    palette_img = Image.fromarray(palette_image)
+    palette_img = Image.fromarray(palette_image, mode='L').convert('RGB')
     combined_img.paste(palette_img, (0, height + spacing))
 
-    # write RGB values under the palette
+    # write intensity values under the palette
     draw = ImageDraw.Draw(combined_img)
     # font_size = 8
     font = ImageFont.truetype("arial.ttf", 8)
 
     text_y = height + spacing + palette_height + 5
 
-    for i, color in enumerate(palette):
+    for i, intensity in enumerate(palette):
         start_x = i * segment_width + segment_width // 2
-        rgb_text = f"R:{int(color[0])}\nG:{int(color[1])}\nB:{int(color[2])}"
-        draw.text((start_x-10, text_y), rgb_text, fill="black", align="center", font=font)
+        label = f"R:{int(intensity)}"
+        draw.text((start_x-10, text_y), label, fill="black", align="center", font=font)
 
     # Save the final image
 
@@ -145,17 +144,17 @@ def PSO(n, N, image_path, max_iterations=30):
     N = number of colors in each palette
     """
     # load the image
-    rgb_values_original, width, height = load_iamge(image_path)
+    grey_values_original, width, height = load_iamge(image_path)
     img_name = image_path.split(".")[0]
 
-    # initialize velocities and positions randomly with RGB values
-    velocities = np.zeros((n, N, 3))  # shape: (n_particles, n_colors_per_palette, 3)
+    # initialize velocities and positions randomly with grey values
+    velocities = np.zeros((n, N))  # shape: (n_particles, n_colors_per_palette, 3)
     np.random.seed(12)  # set seed for getting the same input at each run
-    palettes_xi = np.random.randint(0, 256, (n, N, 3))  # random RGB values
+    palettes_xi = np.random.randint(0, 256, (n, N))  # random grey values
 
     # initialize best positions (local and global) to zero
     local_best = np.zeros_like(palettes_xi)  # same shape as palettes_xi but filled with zeros
-    global_best = np.zeros((N, 3))  # global best initialized with zeros
+    global_best = np.zeros(N)  # global best initialized with zeros
 
     # PSO hyperparameters from lecture slides
     omega = 0.73
@@ -191,16 +190,16 @@ def PSO(n, N, image_path, max_iterations=30):
             palettes_xi[i] = apply_bounding(palettes_xi[i], bound_type=BOUND_POSITION, lower=0, upper=255)
 
             # evaluate fitness and update local and global best
-            fitness_palette_xi = evaluate_palette_fitness(palettes_xi[i], rgb_values_original)
-            if fitness_palette_xi < evaluate_palette_fitness(local_best[i], rgb_values_original):
+            fitness_palette_xi = evaluate_palette_fitness(palettes_xi[i], grey_values_original)
+            if fitness_palette_xi < evaluate_palette_fitness(local_best[i], grey_values_original):
                 local_best[i] = palettes_xi[i]
 
-            if fitness_palette_xi < evaluate_palette_fitness(global_best, rgb_values_original):
+            if fitness_palette_xi < evaluate_palette_fitness(global_best, grey_values_original):
                 global_best = palettes_xi[i]
 
             # ------------------------------------------------ check if we have to stop--------------------------------
 
-        color_change = np.linalg.norm(global_best - prev_palette, axis=1).mean()
+        color_change = np.linalg.norm(global_best - prev_palette).mean()
         prev_palette = global_best.copy()
         # print(color_change)
         if color_change < color_threshold:
@@ -213,7 +212,7 @@ def PSO(n, N, image_path, max_iterations=30):
 
         # ------------------ visualize and save the global best every 10 iterations -----------------------------------
         if iteration % 10 == 0 or iteration == max_iterations - 1:
-            cluster_recreate_image_with_palette(rgb_values_original, global_best, width, height, iteration, img_name)
+            cluster_recreate_image_with_palette(grey_values_original, global_best, width, height, iteration, img_name)
         print(f"Global Best Palette (Iteration {iteration}):\n{global_best.astype(int)}\n")
 
     return local_best, global_best
