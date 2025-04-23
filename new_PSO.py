@@ -8,18 +8,21 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-
-image_original = Image.open("lung2.jpg").convert("RGB")
-width, height = image_original.size
-print(f"Image size:{width}w, {height}h")
-rgb_values_original = np.array(image_original.getdata())
-
+OUTPUT_DIR_RESULTS = "OUTPUT_LUNG_RESULTS"
 # bounding options
 BOUND_VELOCITY = "clip"  # "clip", "reflection", None
 BOUND_POSITION = "clip"  # "clip", "reflection"
 
 
-def evaluate_palette_fitness(palette):
+def load_iamge(image_path):
+    image_original = Image.open(image_path).convert("RGB")
+    width, height = image_original.size
+    print(f"Image size:{width}w, {height}h")
+    rgb_values_original = np.array(image_original.getdata())
+    return rgb_values_original, width, height
+
+
+def evaluate_palette_fitness(palette, rgb_values_original):
     """Fitness score = squared Euclidean distance between pixels and palette"""
     distances = cdist(rgb_values_original, palette, metric='sqeuclidean')
     min_distances = np.min(distances, axis=1)
@@ -65,11 +68,11 @@ def visualize_and_save_palette(palette, iteration):
     ax.set_frame_on(False)
 
     plt.title(f"Global Best Palette (Iteration {iteration+1})")
-    plt.savefig(f"results/lung/palette_iter_{iteration+1}.png", bbox_inches='tight', dpi=150)
+    plt.savefig(f"{OUTPUT_DIR_RESULTS}/palette_iter_{iteration+1}.png", bbox_inches='tight', dpi=150)
     plt.show()
 
 
-def cluster_recreate_image_with_palette(rgb_values_original, palette, width, height, iteration, method="PSO"):
+def cluster_recreate_image_with_palette(rgb_values_original, palette, width, height, iteration, img_name):
     """
     Assigns each pixel to the closest color in the palette, reconstructs the image,
     and appends the best palette with RGB labels below it before saving.
@@ -124,14 +127,10 @@ def cluster_recreate_image_with_palette(rgb_values_original, palette, width, hei
         draw.text((start_x-10, text_y), rgb_text, fill="black", align="center", font=font)
 
     # Save the final image
-    # save_path = f"results/position_{BOUND_POSITION}/velocity_{BOUND_VELOCITY}/reconstructed_palette_iter_{iteration}.png"
 
-    if method == "PSO":
-        save_dir = f"results/lung4/lung_position_{BOUND_POSITION}/velocity_{BOUND_VELOCITY}"
-        save_path = f"{save_dir}/lung_reconstructed_palette_iter_{iteration}.png"
-    elif method == "KM":
-        save_dir = "results/KM"
-        save_path = f"{save_dir}/lung_reconstructed_palette_KM_max_iter_{iteration}.png"
+    img_name = img_name.split("\\")[1]
+    save_dir = f"{OUTPUT_DIR_RESULTS}/{img_name}/lung_position_{BOUND_POSITION}/velocity_{BOUND_VELOCITY}"
+    save_path = f"{save_dir}/lung_reconstructed_palette_iter_{iteration}.png"
 
     os.makedirs(save_dir, exist_ok=True)  # creates directories if they don’t exist
     combined_img.save(save_path, "PNG")
@@ -139,12 +138,15 @@ def cluster_recreate_image_with_palette(rgb_values_original, palette, width, hei
     return combined_img
 
 
-def PSO(n, N, max_iterations=30):
+def PSO(n, N, image_path, max_iterations=30):
     """
     Particle Swarm Optimization for RGB palette extraction.
     n = number of palettes (particles)
     N = number of colors in each palette
     """
+    # load the image
+    rgb_values_original, width, height = load_iamge(image_path)
+    img_name = image_path.split(".")[0]
 
     # initialize velocities and positions randomly with RGB values
     velocities = np.zeros((n, N, 3))  # shape: (n_particles, n_colors_per_palette, 3)
@@ -189,11 +191,11 @@ def PSO(n, N, max_iterations=30):
             palettes_xi[i] = apply_bounding(palettes_xi[i], bound_type=BOUND_POSITION, lower=0, upper=255)
 
             # evaluate fitness and update local and global best
-            fitness_palette_xi = evaluate_palette_fitness(palettes_xi[i])
-            if fitness_palette_xi < evaluate_palette_fitness(local_best[i]):
+            fitness_palette_xi = evaluate_palette_fitness(palettes_xi[i], rgb_values_original)
+            if fitness_palette_xi < evaluate_palette_fitness(local_best[i], rgb_values_original):
                 local_best[i] = palettes_xi[i]
 
-            if fitness_palette_xi < evaluate_palette_fitness(global_best):
+            if fitness_palette_xi < evaluate_palette_fitness(global_best, rgb_values_original):
                 global_best = palettes_xi[i]
 
             # ------------------------------------------------ check if we have to stop--------------------------------
@@ -211,42 +213,27 @@ def PSO(n, N, max_iterations=30):
 
         # ------------------ visualize and save the global best every 10 iterations -----------------------------------
         if iteration % 10 == 0 or iteration == max_iterations - 1:
-            cluster_recreate_image_with_palette(rgb_values_original, global_best, width, height, iteration)
+            cluster_recreate_image_with_palette(rgb_values_original, global_best, width, height, iteration, img_name)
         print(f"Global Best Palette (Iteration {iteration}):\n{global_best.astype(int)}\n")
 
     return local_best, global_best
 
 
-def kmeans_quantization(N, max_iter=100):
-    """
-    K-means clustering to quantize an image
+def main():
+    # Run PSO for each image in the input folder
+    folder_path = 'INPUT_IMAGES'
+    image_extensions = ('.png', '.jpg', '.jpeg')
 
-    n_init – Number of times the k-means algorithm is run with different centroid seeds.
-    The final results is the best output of `n_init` consecutive runs in terms of inertia.
-    Several runs are recommended for sparse high-dimensional problems
+    with os.scandir(folder_path) as entries:
+        for entry in entries:
+            if entry.is_file() and entry.name.lower().endswith(image_extensions):
+                image_path = entry.path
+                print(f"Processing {entry.path}")
 
-    max_iter – Maximum number of iterations of the k-means algorithm for a single run
-    """
-    kmeans = KMeans(n_clusters=N, random_state=12, n_init=10, max_iter=max_iter)
-    kmeans.fit(rgb_values_original)
-    palette = kmeans.cluster_centers_.astype(np.uint8)  # get palette colors
-
-    # reconstruct image
-    cluster_recreate_image_with_palette(rgb_values_original, palette, width, height, iteration=max_iter, method="KM")
-
-    return palette
+                local_best, global_best = PSO(n=20, N=3, image_path=entry.path, max_iterations=10)
 
 
-# Run PSO
-local_best, global_best = PSO(n=20, N=3, max_iterations=20)
-# kmeans_quantization(6, max_iter=1)
-# kmeans_quantization(6, max_iter=3)
-# kmeans_quantization(6, max_iter=5)
-# kmeans_quantization(6, max_iter=10)
-# kmeans_quantization(6, max_iter=20)
-# kmeans_quantization(6, max_iter=50)
-# kmeans_quantization(6, max_iter=100)
-# kmeans_quantization(6, max_iter=200)
+main()
 
 
 
