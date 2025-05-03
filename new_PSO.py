@@ -230,12 +230,3 @@ def main():
                 print(f"Processing {entry.path}")
 
                 local_best, global_best = PSO(n=20, N=3, image_path=entry.path, max_iterations=10)
-
-
-main()
-
-
-
-
-
-

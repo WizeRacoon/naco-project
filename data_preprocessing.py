@@ -122,15 +122,3 @@ def create_image_objects(csv_path, image_folder):
         image_objects.append(image_data_object)
 
     return image_objects
-
-
-#-------------------------------------------------
-
-csv_file_path = 'sample_labels.csv'
-images_directory = 'images'
-
-image_data_objects = create_image_objects(csv_file_path, images_directory)
-
-print(f"Created {len(image_data_objects)} image data objects.")
-print('\n')
-image_data_objects[0].print_details() # example
