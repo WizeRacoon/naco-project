@@ -6,7 +6,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-OUTPUT_DIR_RESULTS = "OUTPUT_LUNG_RESULTS"
+OUTPUT_DIR_RESULTS = "data/PSO/images"
 # bounding options
 BOUND_VELOCITY = "clip"  # "clip", "reflection", None
 BOUND_POSITION = "clip"  # "clip", "reflection"
@@ -128,7 +128,7 @@ def cluster_recreate_image_with_palette(grey_values_original, palette, width, he
     # Save the final image
 
     # img_name = img_name.split("\\")[1] # for Windows
-    img_name = img_name.split("/")[1] # for Linux
+    img_name = img_name.split("/")[3] # for Linux
     save_dir = f"{OUTPUT_DIR_RESULTS}/{img_name}/lung_position_{BOUND_POSITION}/velocity_{BOUND_VELOCITY}"
     save_path = f"{save_dir}/lung_reconstructed_palette_iter_{iteration}.png"
 
