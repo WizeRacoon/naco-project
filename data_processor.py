@@ -3,24 +3,8 @@ import pandas as pd
 from pathlib import Path
 from PIL import Image
 
-# Image Resizig
-def resize_image_to_1024x1024(input_path, output_path):
-    with Image.open(input_path) as img:
-        resized_img = img.resize((1024, 1024), Image.ANTIALIAS)
-        resized_img.save(output_path)
-        print(f"Image saved to {output_path}")
-
-def resize_dataset():
-    image_dir = Path("sample/images")
-    os.chdir(image_dir)
-    print(f"Image dir = {os.getcwd()}")
-    for file in os.listdir():
-        file_path = Path(file)
-        if file_path.is_file():
-            resize_image_to_1024x1024(file_path, file_path)
-
 class ImageData:
-    def __init__(self, image_index, labels, patient_id, patient_age, patient_gender, view_position, original_image_width, original_image_height, original_image_pixel_spacing_x, original_image_pixel_spacing_y, image_path=None, image_object=None):
+    def __init__(self, image_index, labels, patient_id, patient_age, patient_gender, view_position, original_image_width, original_image_height, original_image_pixel_spacing_x, original_image_pixel_spacing_y, image_path=None, image_object=None, symmetry_percentage=None, proportional_lung_capacity=None):
         self.image_index = image_index
         self.labels = labels
         self.patient_id = patient_id
@@ -33,6 +17,8 @@ class ImageData:
         self.original_image_pixel_spacing_y = original_image_pixel_spacing_y
         self.image_path = image_path
         self.image_object = image_object
+        self.symmetry_percentage = symmetry_percentage
+        self.proportional_lung_capacity = proportional_lung_capacity
 
     def __repr__(self):
         return f"ImageData(image_index='{self.image_index}', patient_id='{self.patient_id}')"
@@ -52,6 +38,10 @@ class ImageData:
             print(f"Image Path: {self.image_path}")
         if self.image_object:
             print(f"Image Size: {self.image_object.size}")
+        if self.symmetry_percentage:
+            print(f"Symmetry percentage (*100): {(self.symmetry_percentage*100):.2f}%")
+        if self.proportional_lung_capacity:
+            print(f"The larger lung is {self.proportional_lung_capacity}x larger then the smaller lung")
         print("-" * 20)
 
 def create_image_objects(csv_path, image_folder):
@@ -104,6 +94,9 @@ def create_image_objects(csv_path, image_folder):
                 print(f"Warning: Image file not found at {image_path}")
             except Exception as e:
                 print(f"Warning: Could not open image at {image_path} - {e}")
+                
+        symmetry_percentage = None
+        proportional_lung_capacity = None
 
         image_data_object = ImageData(
             image_index=image_index,
@@ -117,7 +110,9 @@ def create_image_objects(csv_path, image_folder):
             original_image_pixel_spacing_x=original_image_pixel_spacing_x,
             original_image_pixel_spacing_y=original_image_pixel_spacing_y,
             image_path=image_path,
-            image_object=image_object
+            image_object=image_object,
+            symmetry_percentage=symmetry_percentage,
+            proportional_lung_capacity=proportional_lung_capacity
         )
         image_objects.append(image_data_object)
 
