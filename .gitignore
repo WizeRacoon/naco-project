@@ -3,3 +3,8 @@
 /.idea
 /OUTPUT_LUNG_RESULTS
 /INPUT_IMAGES
+__pycache__
+__pycache__/
+*.pyc
+/input_data
+/OUTPUT_IMAGES
