@@ -7,8 +7,8 @@ from math import floor
 
 def main():
     # Preprocessing data
-    csv_file_path = 'data/input_data/labels.csv'
-    images_directory = 'data/input_data/images'
+    csv_file_path = 'data/input/labels.csv'
+    images_directory = 'data/input/images'
 
     # Create image objects
     image_data_objects = dp.create_image_objects(csv_file_path, images_directory)
@@ -50,9 +50,11 @@ def main():
     test_images = balanced_image_data_objects[train_size:train_size + test_size]
     val_images = balanced_image_data_objects[train_size + test_size:]
 
+    print("here?")
+
     # Function to save images into subdirectories
     def save_images_to_subdirs(images, split_name):
-        split_dir = os.path.join('data/input_data/filtered_images_split', split_name)
+        split_dir = os.path.join('data/input/filtered_images_split', split_name)
         os.makedirs(split_dir, exist_ok=True)
         
         normal_dir = os.path.join(split_dir, 'NORMAL')
@@ -88,18 +90,59 @@ def main():
     #print('\n')
     #image_data_objects[0].print_details() # example
 
-    '''
-    for image_data_object in image_data_objects:
+    for image_data_object in atelectasis_objects:
         img_name = image_data_object.image_index.split(".")[0]
+
+        subfolder_name = ""
+        images_test = os.listdir("data/input/filtered_images_split/test/ATELECTASIS")
+        images_train = os.listdir("data/input/filtered_images_split/train/ATELECTASIS")
+        images_val = os.listdir("data/input/filtered_images_split/val/ATELECTASIS")
+
+        for image in images_test:
+            if image == image_data_object.image_index:
+                subfolder_name = "test"
+        for image in images_train:
+            if image == image_data_object.image_index:
+                subfolder_name = "train"
+        for image in images_val:
+            if image == image_data_object.image_index:
+                subfolder_name = "val"
 
         nPSO.PSO(n=20, N=3, image_path= f"{images_directory}/{image_data_object.image_index}", max_iterations=10)
         pPSO.lung_mask(image_index = image_data_object.image_index, 
                        PSO_image_relative_path = f"data/PSO/images/{img_name}/lung_position_clip/velocity_clip/lung_reconstructed_palette_iter_9.png", 
-                       output_directory = "data/masked_lungs/images")
-        image_data_object.symmetry_percentage, image_data_object.proportional_lung_capacity = df.calc_lung_symmetry(f"data/masked_lungs/images/{image_data_object.image_index}", show_symmetry_line=False)
+                       output_directory = f"data/input/filtered_images_split/{subfolder_name}/ATELECTASIS")
+        #image_data_object.symmetry_percentage, image_data_object.proportional_lung_capacity = df.calc_lung_symmetry(f"data/masked_lungs/images/{image_data_object.image_index}", show_symmetry_line=False)
         
-        image_data_object.print_details()
+        #image_data_object.print_details()
+    
+    for image_data_object in no_finding_objects:
+        img_name = image_data_object.image_index.split(".")[0]
 
+        subfolder_name = ""
+        images_test = os.listdir("data/input/filtered_images_split/test/NORMAL")
+        images_train = os.listdir("data/input/filtered_images_split/train/NORMAL")
+        images_val = os.listdir("data/input/filtered_images_split/val/NORMAL")
+
+        for image in images_test:
+            if image == image_data_object.image_index:
+                subfolder_name = "test"
+        for image in images_train:
+            if image == image_data_object.image_index:
+                subfolder_name = "train"
+        for image in images_val:
+            if image == image_data_object.image_index:
+                subfolder_name = "val"
+
+        nPSO.PSO(n=20, N=3, image_path= f"{images_directory}/{image_data_object.image_index}", max_iterations=10)
+        pPSO.lung_mask(image_index = image_data_object.image_index, 
+                       PSO_image_relative_path = f"data/PSO/images/{img_name}/lung_position_clip/velocity_clip/lung_reconstructed_palette_iter_9.png", 
+                       output_directory = f"data/input/filtered_images_split/{subfolder_name}/NORMAL")
+        #image_data_object.symmetry_percentage, image_data_object.proportional_lung_capacity = df.calc_lung_symmetry(f"data/masked_lungs/images/{image_data_object.image_index}", show_symmetry_line=False)
+        
+        #image_data_object.print_details()
+
+    '''
     df.calc_lung_symmetry(f"OUTPUT_LUNG_RESULTS/lung/lung_position_clip/velocity_clip/lung_post_processed_iter_9.png", show_symmetry_line=True)
     df.calc_lung_symmetry(f"OUTPUT_LUNG_RESULTS/lung2/lung_position_clip/velocity_clip/lung_post_processed_iter_9.png", show_symmetry_line=True)
     '''
