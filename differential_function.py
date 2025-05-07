@@ -86,5 +86,6 @@ def calc_lung_symmetry(masked_lung_image_relative_path, show_symmetry_line = Fal
         print(f"Optimal symmetry line x = {symmetry_x}")
         print(f"Symmetry percentage = {(symmetry_percentage*100):.2f}%")
         print(f"proportional lung capacity = {proportional_lung_capacity}x")
+        print("\n")
         
     return symmetry_percentage, proportional_lung_capacity
