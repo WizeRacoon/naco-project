@@ -70,7 +70,7 @@ def apply_bounding(values, bound_type="clip", lower=0, upper=255):
 #     plt.show()
 
 
-def cluster_recreate_image_with_palette(grey_values_original, palette, width, height, iteration, img_name):
+def cluster_recreate_image_with_palette(grey_values_original, palette, width, height, iteration, img_name, output_directory):
     """
     Assigns each pixel to the closest color in the palette, reconstructs the image,
     and appends the best palette with grey labels below it before saving.
@@ -129,7 +129,7 @@ def cluster_recreate_image_with_palette(grey_values_original, palette, width, he
 
     # img_name = img_name.split("\\")[1] # for Windows
     img_name = img_name.split("/")[3] # for Linux
-    save_dir = f"{OUTPUT_DIR_RESULTS}/{img_name}/lung_position_{BOUND_POSITION}/velocity_{BOUND_VELOCITY}"
+    save_dir = f"{output_directory}/{img_name}/lung_position_{BOUND_POSITION}/velocity_{BOUND_VELOCITY}"
     save_path = f"{save_dir}/lung_reconstructed_palette_iter_{iteration}.png"
 
     os.makedirs(save_dir, exist_ok=True)  # creates directories if they don’t exist
@@ -138,7 +138,7 @@ def cluster_recreate_image_with_palette(grey_values_original, palette, width, he
     return combined_img
 
 
-def PSO(n, N, image_path, max_iterations=30):
+def PSO(n, N, image_path, max_iterations=30, output_directory = "PSO/images/"):
     """
     Particle Swarm Optimization for RGB palette extraction.
     n = number of palettes (particles)
@@ -213,7 +213,7 @@ def PSO(n, N, image_path, max_iterations=30):
 
         # ------------------ visualize and save the global best every 10 iterations -----------------------------------
         if iteration % 10 == 0 or iteration == max_iterations - 1:
-            cluster_recreate_image_with_palette(grey_values_original, global_best, width, height, iteration, img_name)
+            cluster_recreate_image_with_palette(grey_values_original, global_best, width, height, iteration, img_name, output_directory)
         print(f"Global Best Palette (Iteration {iteration}):\n{global_best.astype(int)}\n")
 
     return local_best, global_best
@@ -288,4 +288,4 @@ def main_lisanne():
                 except Exception as e:
                     print(f"Error processing {image_path}: {e}")
 
-main_lisanne()
+#main_lisanne()
