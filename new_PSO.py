@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+from genetic_clustering import genetic_clustering
 
 OUTPUT_DIR_RESULTS = "OUTPUT_LUNG_RESULTS"
 # bounding options
@@ -137,15 +138,15 @@ def cluster_recreate_image_with_palette(grey_values_original, palette, width, he
     return combined_img
 
 
-def PSO(n, N, image_path, max_iterations=30):
+def PSO(n, N, processed_image, max_iterations=30):
     """
     Particle Swarm Optimization for RGB palette extraction.
     n = number of palettes (particles)
     N = number of colors in each palette
     """
     # load the image
-    grey_values_original, width, height = load_iamge(image_path)
-    img_name = image_path.split(".")[0]
+    grey_values_original, width, height, img_name = processed_image[0], processed_image[1], processed_image[2], processed_image[3]
+
 
     # initialize velocities and positions randomly with grey values
     velocities = np.zeros((n, N))  # shape: (n_particles, n_colors_per_palette, 3)
@@ -166,6 +167,7 @@ def PSO(n, N, image_path, max_iterations=30):
     max_iter_stop = 0
     prev_palette = global_best.copy()  # this will save the best palette from the previous iteration
 
+    all_global_bests = []  # this will store the global best after each iteration
     for iteration in range(max_iterations):
         print(f"ITERATION {iteration}")
 
@@ -214,8 +216,9 @@ def PSO(n, N, image_path, max_iterations=30):
         if iteration % 10 == 0 or iteration == max_iterations - 1:
             cluster_recreate_image_with_palette(grey_values_original, global_best, width, height, iteration, img_name)
         print(f"Global Best Palette (Iteration {iteration}):\n{global_best.astype(int)}\n")
+        all_global_bests.append(global_best)
 
-    return local_best, global_best
+    return grey_values_original, global_best, all_global_bests
 
 
 def main():
@@ -228,8 +231,23 @@ def main():
             if entry.is_file() and entry.name.lower().endswith(image_extensions):
                 image_path = entry.path
                 print(f"Processing {entry.path}")
+                img_name = image_path.split(".")[0]
+                grey_values_original, width, height = load_iamge(image_path)
+                processed_image = [grey_values_original, width, height, img_name]
 
-                local_best, global_best = PSO(n=20, N=3, image_path=entry.path, max_iterations=10)
+                grey_values_original, global_best, all_global_bests = PSO(n=20, N=3, processed_image=processed_image, max_iterations=10)
+
+                # Apply genetic clustering to all the global bests for one image
+                unique_global_bests = np.unique(np.array(all_global_bests), axis=0)
+
+                print("Starting genetic clustering")
+                ga_palette = genetic_clustering(grey_values_original, initial_population=unique_global_bests, num_clusters=3)
+                print(f"GA palette: {ga_palette}")
+                ga_palette = np.clip(np.round(ga_palette), 0, 255).astype(np.uint8)
+                print(f"Round GA palette to {ga_palette}")
+
+                # Visualize and save the final result
+                cluster_recreate_image_with_palette(grey_values_original, ga_palette, width, height, iteration="palette_GA", img_name=f"{img_name}_GA" )
 
 
 main()
