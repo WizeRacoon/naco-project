@@ -20,11 +20,26 @@ def load_iamge(image_path):
     return grey_values_original, width, height
 
 
-def evaluate_palette_fitness(palette, grey_values_original):
-    """Fitness score = squared Euclidean distance between pixels and palette"""
+def evaluate_palette_fitness(palette, grey_values_original, width=None, height=None):
+    """
+    Fitness = weighted squared Euclidean distance between pixels and palette.
+    If width/height are provided, central pixels have higher weights.
+    """
     distances = cdist(grey_values_original[:, None], palette[:, None], metric='sqeuclidean')
     min_distances = np.min(distances, axis=1)
-    return np.sum(min_distances)
+
+    if width is not None and height is not None:
+        # Create Gaussian center weight map
+        x = np.linspace(-1, 1, width)
+        y = np.linspace(-1, 1, height)
+        xv, yv = np.meshgrid(x, y)
+        gaussian_weights = np.exp(-(xv**2 + yv**2) / (2 * 0.7**2))  # sigma = 0.3
+        gaussian_weights = gaussian_weights.flatten()
+
+        # Weighted sum
+        return np.sum(min_distances * gaussian_weights)
+    else:
+        return np.sum(min_distances)
 
 
 def clip_ro_rgb(values):
@@ -191,11 +206,11 @@ def PSO(n, N, image_path, max_iterations=30, output_directory = "PSO/images/"):
             palettes_xi[i] = apply_bounding(palettes_xi[i], bound_type=BOUND_POSITION, lower=0, upper=255)
 
             # evaluate fitness and update local and global best
-            fitness_palette_xi = evaluate_palette_fitness(palettes_xi[i], grey_values_original)
-            if fitness_palette_xi < evaluate_palette_fitness(local_best[i], grey_values_original):
+            fitness_palette_xi = evaluate_palette_fitness(palettes_xi[i], grey_values_original, width, height)
+            if fitness_palette_xi < evaluate_palette_fitness(local_best[i], grey_values_original, width, height):
                 local_best[i] = palettes_xi[i]
 
-            if fitness_palette_xi < evaluate_palette_fitness(global_best, grey_values_original):
+            if fitness_palette_xi < evaluate_palette_fitness(global_best, grey_values_original, width, height):
                 global_best = palettes_xi[i]
 
             # ------------------------------------------------ check if we have to stop--------------------------------

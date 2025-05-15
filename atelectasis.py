@@ -6,7 +6,7 @@ from math import floor
 
 #================================================================================================
 ### Experiment name------------------
-experiment_name                     = "Experiment"
+experiment_name                     = "Experiment_biasedPSO_07"
 
 
 ### Input data location--------------
@@ -19,7 +19,7 @@ apply_PSO                           = True
 
 n                                   = 20                        # number of palettes (particles)
 N                                   = 3                         # number of colors in each palette
-max_iterations                      = 3                         # maximum number of iterations
+max_iterations                      = 5                         # maximum number of iterations
 #image_path                         =
 PSO_output_directory                = f"{experiment_name}/PSO/images"
 
@@ -52,11 +52,15 @@ os.makedirs(symmetry_output_directory, exist_ok=True)
 
     
 def main():
-    image_data_objects = dp.create_image_objects(csv_file_path, images_directory)
+    image_data_objects = dp.create_image_objects(csv_file_path, images_directory) #"PSO_iter-4_results_split-images/test/ATELECTASIS"
     print(f"Created {len(image_data_objects)} image data objects.")
+    for image_data_object in image_data_objects:
+        image_data_object.print_details()
+
     
     for image_data_object in image_data_objects:
         img_name = image_data_object.image_index.split(".")[0]
+        print(img_name)
 
         if apply_PSO:
             nPSO.PSO(
@@ -83,6 +87,12 @@ def main():
                 symmetry_output_directory = symmetry_output_directory, 
                 print_findings = print_findings
                 )
+            
+        if False:
+            pPSO.lung_mask(
+                image_index = image_data_object.image_index,
+                PSO_image_relative_path = f"PSO_iter-4_results_split-images/test/ATELECTASIS/{img_name}.png",
+                output_directory = "PSO_iter-4_results_split-images/test-lung_mask/ATELECTASIS")
 
 if __name__ == "__main__":
     main()  # call the main function when the script is run directly

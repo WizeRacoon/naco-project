@@ -65,7 +65,7 @@ def create_image_objects(csv_path, image_folder):
     image_objects = []
     image_filenames = set(os.listdir(image_folder))
 
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
         image_index = row['Image Index']
         labels = row['Finding Labels']
         patient_id = row['Patient ID']
@@ -78,42 +78,31 @@ def create_image_objects(csv_path, image_folder):
         original_image_pixel_spacing_y = row['OriginalImagePixelSpacing_y']
 
         # Try to find the corresponding image file
-        image_file = None
-        for filename in image_filenames:
-            if image_index in filename:
-                image_file = filename
-                break
+        image_file = next((fname for fname in image_filenames if image_index in fname), None)
 
-        image_path = None
-        image_object = None
         if image_file:
             image_path = os.path.join(image_folder, image_file)
             try:
                 image_object = Image.open(image_path)
-            except FileNotFoundError:
-                print(f"Warning: Image file not found at {image_path}")
-            except Exception as e:
-                print(f"Warning: Could not open image at {image_path} - {e}")
-                
-        symmetry_percentage = None
-        proportional_lung_capacity = None
 
-        image_data_object = ImageData(
-            image_index=image_index,
-            labels=labels,
-            patient_id=patient_id,
-            patient_age=patient_age,
-            patient_gender=patient_gender,
-            view_position=view_position,
-            original_image_width=original_image_width,
-            original_image_height=original_image_height,
-            original_image_pixel_spacing_x=original_image_pixel_spacing_x,
-            original_image_pixel_spacing_y=original_image_pixel_spacing_y,
-            image_path=image_path,
-            image_object=image_object,
-            symmetry_percentage=symmetry_percentage,
-            proportional_lung_capacity=proportional_lung_capacity
-        )
-        image_objects.append(image_data_object)
+                image_data_object = ImageData(
+                    image_index=image_index,
+                    labels=labels,
+                    patient_id=patient_id,
+                    patient_age=patient_age,
+                    patient_gender=patient_gender,
+                    view_position=view_position,
+                    original_image_width=original_image_width,
+                    original_image_height=original_image_height,
+                    original_image_pixel_spacing_x=original_image_pixel_spacing_x,
+                    original_image_pixel_spacing_y=original_image_pixel_spacing_y,
+                    image_path=image_path,
+                    image_object=image_object
+                )
+                image_objects.append(image_data_object)
+
+            except (FileNotFoundError, OSError) as e:
+                print(f"Warning: Could not open image at {image_path} - {e}")
+                continue  # Skip creation if image can't be opened
 
     return image_objects
