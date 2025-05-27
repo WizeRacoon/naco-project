@@ -1,5 +1,9 @@
 import os
 
+"""
+In order to perform PSO, it is necessary to have all the files in 1 directory.
+"""
+
 def collect_all_files():
     # Define the root directory (current directory) and the target directory
     root_dir = os.getcwd()  # Current working directory (only_PA folder)
