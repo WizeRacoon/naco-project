@@ -15,7 +15,7 @@ images_directory                    = 'data/input/images'
 
 
 ### PSO------------------------------
-apply_PSO                           = False
+apply_PSO                           = True
 
 n                                   = 20                        # number of palettes (particles)
 N                                   = 3                         # number of colors in each palette
@@ -30,7 +30,7 @@ apply_masking                       = True
 #image_index                        =
 #PSO_image_relative_path            =
 masking_output_directory            = f"{experiment_name}/lung_mask/images"
-save_intermediate                   = True
+save_intermediate                   = False
 masking_intermediate_directory      = f"{experiment_name}/lung_mask/intermediate_steps"
 
 
@@ -50,7 +50,8 @@ print_findings                      = False
 # Making dirs if they don't exist yet
 os.makedirs(PSO_output_directory, exist_ok=True)
 os.makedirs(masking_output_directory, exist_ok=True)
-os.makedirs(masking_intermediate_directory, exist_ok=True)
+if save_intermediate:
+    os.makedirs(masking_intermediate_directory, exist_ok=True)
 os.makedirs(symmetry_output_directory, exist_ok=True)
 
     
