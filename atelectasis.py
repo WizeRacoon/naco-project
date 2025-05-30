@@ -2,7 +2,6 @@
 
 import data_processor as dp, new_PSO as nPSO, post_PSO as pPSO, differential_function as df
 import os
-from math import floor
 
 #================================================================================================
 ### Experiment name------------------
@@ -30,7 +29,7 @@ apply_masking                       = True
 #image_index                        =
 #PSO_image_relative_path            =
 masking_output_directory            = f"{experiment_name}/lung_mask/images"
-save_intermediate                   = False
+save_intermediate                   = True
 masking_intermediate_directory      = f"{experiment_name}/lung_mask/intermediate_steps"
 
 
