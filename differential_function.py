@@ -96,9 +96,9 @@ def calc_proportional_lung_capacity(symmetry_x, binary, height, width):
                     
     return proportional_lung_capacity
 
-def calc_lung_symmetry(image_index, masked_lung_image_relative_path, show_symmetry_line = False, save_symmetry_line = False, symmetry_output_directory = "symmetry_line", print_findings = False):
+def calc_lung_symmetry(image_index, segmented_lung_image_relative_path, show_symmetry_line = False, save_symmetry_line = False, symmetry_output_directory = "symmetry_line", print_findings = False):
     # Load and binarize the image
-    image = Image.open(masked_lung_image_relative_path).convert("L")
+    image = Image.open(segmented_lung_image_relative_path).convert("L")
     binary = np.array(image) > 128
     binary = binary.astype(int)
     height, width = binary.shape

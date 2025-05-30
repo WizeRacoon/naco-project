@@ -15,7 +15,6 @@ BOUND_POSITION = "clip"  # "clip", "reflection"
 def load_iamge(image_path):
     image_original = Image.open(image_path).convert("L")
     width, height = image_original.size
-    print(f"Image size:{width}w, {height}h")
     grey_values_original = np.array(image_original.getdata())  # now this will be a 1D array
     return grey_values_original, width, height
 
@@ -134,11 +133,10 @@ def cluster_recreate_image_with_palette(grey_values_original, palette, width, he
 
     os.makedirs(save_dir, exist_ok=True)  # creates directories if they don’t exist
     combined_img.save(save_path, "PNG")
-    print(f"Reconstructed image saved for iteration {iteration}")
     return combined_img
 
 
-def PSO(n, N, image_path, max_iterations=30, output_directory = "PSO/images/"):
+def PSO(n, N, image_path, max_iterations, output_directory, save_iteration_list):
     """
     Particle Swarm Optimization for RGB palette extraction.
     n = number of palettes (particles)
@@ -167,9 +165,7 @@ def PSO(n, N, image_path, max_iterations=30, output_directory = "PSO/images/"):
     max_iter_stop = 0
     prev_palette = global_best.copy()  # this will save the best palette from the previous iteration
 
-    for iteration in range(max_iterations):
-        print(f"ITERATION {iteration}")
-
+    for iteration in range(1, max_iterations + 1, 1):
         for i in range(n):  # for each palette
             r1, r2 = np.random.rand(), np.random.rand()
 
@@ -212,80 +208,10 @@ def PSO(n, N, image_path, max_iterations=30, output_directory = "PSO/images/"):
             max_iter_stop = 0
 
         # ------------------ visualize and save the global best every 10 iterations -----------------------------------
-        if iteration % 10 == 0 or iteration == max_iterations - 1:
+        if iteration in save_iteration_list:
             cluster_recreate_image_with_palette(grey_values_original, global_best, width, height, iteration, img_name, output_directory)
-        print(f"Global Best Palette (Iteration {iteration}):\n{global_best.astype(int)}\n")
+            print(f"Iteration {iteration} Global Best Palette: {global_best.astype(int)} - SAVED")
+        else:
+            print(f"Iteration {iteration} Global Best Palette: {global_best.astype(int)}")
 
     return local_best, global_best
-
-
-def main():
-    # Run PSO for each image in the input folder
-    folder_path = 'INPUT_IMAGES'
-    image_extensions = ('.png', '.jpg', '.jpeg')
-
-    with os.scandir(folder_path) as entries:
-        for entry in entries:
-            if entry.is_file() and entry.name.lower().endswith(image_extensions):
-                image_path = entry.path
-                print(f"Processing {entry.path}")
-
-                local_best, global_best = PSO(n=20, N=3, image_path=entry.path, max_iterations=10)
-
-
-def main_lisanne():
-    # Run PSO for each image in the filtered_images folder and its subfolders
-    input_folder = './input_data/filtered_images_split/'
-    output_folder = './OUTPUT_IMAGES/'
-    image_extensions = ('.png', '.jpg', '.jpeg')
-
-    # Ensure the output folder exists
-    os.makedirs(output_folder, exist_ok=True)
-
-    print(f"Processing images in {input_folder} and saving to {output_folder}")
-
-    for root, _, files in os.walk(input_folder):
-        print(f"Processing folder: {root}")
-        for file in files:
-            print(f"Found file: {file}")
-            if file.lower().endswith(image_extensions):
-                print(f"Found image: {file}")
-                # Construct the input image path
-                image_path = os.path.join(root, file)
-                print(f"Processing {image_path}")
-
-                # Determine the label based on the folder structure
-                if 'NORMAL' in root.upper():
-                    label = 'NORMAL'
-                elif 'ATELECTASIS' in root.upper():
-                    label = 'ATELECTASIS'
-                else:
-                    print(f"Skipping {image_path} (unknown label)")
-                    continue
-
-                # Construct the output path
-                relative_path = os.path.relpath(root, input_folder)
-                output_subfolder = os.path.join(output_folder, relative_path)
-                os.makedirs(output_subfolder, exist_ok=True)
-                output_image_path = os.path.join(output_subfolder, file)
-
-                # Run PSO and save the processed image
-                try:
-                    print(f"Running PSO for {image_path}...")
-                    local_best, global_best = PSO(n=20, N=3, image_path=image_path, max_iterations=10)
-                    print(f"PSO completed for {image_path}")
-
-                    # Save the processed image
-                    processed_image = cluster_recreate_image_with_palette(
-                        grey_values_original=np.array(Image.open(image_path).convert("L").getdata()),
-                        palette=global_best,
-                        width=Image.open(image_path).size[0],
-                        height=Image.open(image_path).size[1],
-                        iteration=0,  # Example: iteration 0
-                        img_name=output_image_path
-                    )
-                    print(f"Saved processed image to {output_image_path}")
-                except Exception as e:
-                    print(f"Error processing {image_path}: {e}")
-
-#main_lisanne()
