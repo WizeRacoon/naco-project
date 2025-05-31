@@ -117,3 +117,14 @@ def calc_lung_symmetry(image_index, segmented_lung_image_relative_path, show_sym
         print("\n")
         
     return symmetry_percentage, proportional_lung_capacity
+
+def has_disease_verdict(symmetry_percentage, proportional_lung_capacity):
+    if symmetry_percentage < 50:
+        return "Disease"
+    elif symmetry_percentage >= 95:
+        return "No Disease"
+    else:
+        if proportional_lung_capacity > 1.5:
+            return "Disease"
+        else:
+            return "No Disease"
