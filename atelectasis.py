@@ -7,7 +7,7 @@ from multiprocessing import Pool, cpu_count
 # Data Filters ==================================================================================
 # Here, you can adjust which data to consider. If you want to consider all data of a class, just state the list ["any"] (this cannot be done for the "labels" class)
 
-image_index                     = ["any"]                           # list of indeces of image; unique identifier in the form "'patient_id' + '_' + 'follow_up_number' + '.png'"
+image_index                     = ["any"]                                   # list of indeces of image; unique identifier in the form "'patient_id' + '_' + 'follow_up_number' + '.png'"
 labels                          = ["No Finding", 
                                    "Atelectasis", 
                                    "Consolidation", 
@@ -22,18 +22,18 @@ labels                          = ["No Finding",
                                    "Cardiomegaly", 
                                    "Nodule",
                                    "Mass", 
-                                   "Hernia"]                        # list of labels (diseases). Possibilities: ["No Finding", "Atelectasis", "Consolidation", "Infiltration", "Pneumothorax", "Edema", "Emphysema", "Fibrosis", "Effusion", "Pneumonia", "Pleural_Thickening", "Cardiomegaly", "Nodule", "Mass", "Hernia"]
-follow_up_number                = ["any"]                           # list of number of patients' xray image (e.g, their 25th xray image)
+                                   "Hernia"]                                # list of labels (diseases). Possibilities: ["No Finding", "Atelectasis", "Consolidation", "Infiltration", "Pneumothorax", "Edema", "Emphysema", "Fibrosis", "Effusion", "Pneumonia", "Pleural_Thickening", "Cardiomegaly", "Nodule", "Mass", "Hernia"]
+follow_up_number                = ["any"]                                   # list of number of patients' xray image (e.g, their 25th xray image)
 patient_id                      = ["any"]
-patient_age                     = ["any"]                           # list of ages in format 'XXXY', where the 3 X's denote the age, and 'Y' is an abbreviation for year. e.g., '059Y' means the patient is 59 years old
-patient_gender                  = ["any"]                           # list of genders in format ["M","F"]
-view_position                   = ["any"]                           # list of view positions in format ["PA","AP"]. PA means posteroanterior (image trough the front), AP means anteroposterior (image trough the back)
-#OriginalImageWidth             =                                   # trivial as the dataset has converted all images to 1024
-#OriginalImageHeight            =                                   # trivial as the dataset has converted all images to 1024
-#OriginalImagePixelSpacing_x    =                                   # trivial
-#OriginalImagePixelSpacing_y    =                                   # trivial
+patient_age                     = ["any"]                                   # list of ages in format 'XXXY', where the 3 X's denote the age, and 'Y' is an abbreviation for year. e.g., '059Y' means the patient is 59 years old
+patient_gender                  = ["any"]                                   # list of genders in format ["M","F"]
+view_position                   = ["any"]                                   # list of view positions in format ["PA","AP"]. PA means posteroanterior (image trough the front), AP means anteroposterior (image trough the back)
+#OriginalImageWidth             =                                           # trivial as the dataset has converted all images to 1024
+#OriginalImageHeight            =                                           # trivial as the dataset has converted all images to 1024
+#OriginalImagePixelSpacing_x    =                                           # trivial
+#OriginalImagePixelSpacing_y    =                                           # trivial
 
-labels_mutially_exclusive       = False                             # if 'True': set such that no patient with label A has label B | if 'False': set such that a patient can have multiple labels
+labels_mutially_exclusive       = False                                     # if 'True': set such that no patient with label A has label B | if 'False': set such that a patient can have multiple labels
 
 #================================================================================================
 
@@ -43,7 +43,11 @@ labels_mutially_exclusive       = False                             # if 'True':
 # Here, you can adjust what experiment you want to run and where to put it
 
 ### Experiment name------------------
-experiment_name                     = "Experiment_all_N3_i20"
+experiment_name                     = "Experiment"
+
+### Multiprocessing-=----------------
+multiprocessing                     = True                                  # apply multiprocessing?
+core_percentage                     = 90                                    # percentage of CPU to use when multiprocessing
 
 
 ### Input data location--------------
@@ -61,7 +65,7 @@ N                                   = 3                                     # nu
 max_iterations                      = 20                                    # maximum number of iterations
 #image_path                         =
 PSO_output_directory                = f"{experiment_name}/PSO/images"
-save_iteration_list                 = [1,2,3,4,5,10,20]                # list of iterations to be saved as an image
+save_iteration_list                 = [1,2,3,4,5,10,20]                     # list of iterations to be saved as an image
 
 
 ### segmentation----------------------------
@@ -69,9 +73,9 @@ apply_segmentation                  = False
 
 #image_index                        =
 #PSO_image_relative_path            =
-segmentation_output_directory       = f"{experiment_name}/lung_mask/images"
+segmentation_output_directory       = f"{experiment_name}/segmentation/images"
 save_intermediate                   = True
-segmentation_intermediate_directory = f"{experiment_name}/lung_mask/intermediate_steps"
+segmentation_intermediate_directory = f"{experiment_name}/segmentation/intermediate_steps"
 
 
 ### differential function------------
@@ -148,14 +152,17 @@ def main():
         labels_mutially_exclusive
     )
     print(f"Created {len(image_data_objects)} image data objects.")
+    
+    if multiprocessing:
+        total_cpus = cpu_count()
+        num_workers = max(1, int(total_cpus * core_percentage/100))
+        print(f"Using {num_workers}/{total_cpus} CPU cores...")
 
-    # Use ~85% of available CPUs
-    total_cpus = cpu_count()
-    num_workers = max(1, int(total_cpus * 0.85))
-    print(f"Using {num_workers}/{total_cpus} CPU cores...")
-
-    with Pool(processes=num_workers) as pool:
-        pool.map(process_image, image_data_objects)
+        with Pool(processes=num_workers) as pool:
+            pool.map(process_image, image_data_objects)
+    else:
+        for image_data_object in image_data_objects:
+            process_image(image_data_object)
 
 if __name__ == "__main__":
     main()  # call the main function when the script is run directly
