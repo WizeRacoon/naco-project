@@ -48,7 +48,7 @@ def plot_symmetry_line(image_index, image, symmetry_x, height, width, show_symme
     # Draw red line
     image_rgb = image.convert("RGB")
     draw = ImageDraw.Draw(image_rgb)
-    draw.line([(symmetry_x, 0), (symmetry_x, height)], fill=(255, 0, 0), width=2)
+    draw.line([(symmetry_x, 0), (symmetry_x, height)], fill=(255, 0, 0), width=5)
 
     # Show image (if running in Jupyter or local script)
     if show_symmetry_line:
@@ -119,7 +119,7 @@ def calc_lung_symmetry(image_index, segmented_lung_image_relative_path, show_sym
         
     return symmetry_percentage, proportional_lung_capacity
 
-def optimize_thresholds(result_list, positive_label='disease', resolution=10):
+def optimize_thresholds(result_list, positive_label, resolution=10):
     # Prepare data
     symmetry = []
     capacity = []
@@ -144,8 +144,8 @@ def optimize_thresholds(result_list, positive_label='disease', resolution=10):
     best_threshold = None
 
     # Try weight combinations and thresholds
-    w1_range = np.linspace(-100, 100, resolution)
-    w2_range = np.linspace(-100, 100, resolution)
+    w1_range = np.linspace(0, 1000, resolution)
+    w2_range = np.linspace(0, 1000, resolution)
 
     for w1 in w1_range:
         for w2 in w2_range:

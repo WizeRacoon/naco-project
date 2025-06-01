@@ -5,32 +5,20 @@ import os
 from multiprocessing import Pool, cpu_count
 import random
 from collections import defaultdict
+import cv2
+import sys
+import matplotlib.pyplot as plt
+from PIL import Image
 
 # Data Filters ==================================================================================
 # Here, you can adjust which data to consider. If you want to consider all data of a class, just state the list ["any"] (this cannot be done for the "labels" class)
 
 image_index                     = ["any"]                                   # list of indeces of image; unique identifier in the form "'patient_id' + '_' + 'follow_up_number' + '.png'"
-labels                          = ["No Finding", 
-                                   "Atelectasis"]
-'''labels                          = ["No Finding", 
-                                   "Atelectasis", 
-                                   "Consolidation", 
-                                   "Infiltration", 
-                                   "Pneumothorax", 
-                                   "Edema", 
-                                   "Emphysema", 
-                                   "Fibrosis", 
-                                   "Effusion", 
-                                   "Pneumonia", 
-                                   "Pleural_Thickening", 
-                                   "Cardiomegaly", 
-                                   "Nodule",
-                                   "Mass", 
-                                   "Hernia"]'''                             # list of labels (diseases). Possibilities: ["No Finding", "Atelectasis", "Consolidation", "Infiltration", "Pneumothorax", "Edema", "Emphysema", "Fibrosis", "Effusion", "Pneumonia", "Pleural_Thickening", "Cardiomegaly", "Nodule", "Mass", "Hernia"]
+labels                          = ["No Finding","Atelectasis"]                           # list of labels (diseases). Possibilities: ["No Finding", "Atelectasis", "Consolidation", "Infiltration", "Pneumothorax", "Edema", "Emphysema", "Fibrosis", "Effusion", "Pneumonia", "Pleural_Thickening", "Cardiomegaly", "Nodule", "Mass", "Hernia"]
 follow_up_number                = ["any"]                                   # list of number of patients' xray image (e.g, their 25th xray image)
 patient_id                      = ["any"]
 patient_age                     = ["any"]                                   # list of ages in format 'XXXY', where the 3 X's denote the age, and 'Y' is an abbreviation for year. e.g., '059Y' means the patient is 59 years old
-patient_gender                  = ["any"]                                   # list of genders in format ["M","F"]
+patient_gender                  = ["M"]                                   # list of genders in format ["M","F"]
 view_position                   = ["PA"]                                   # list of view positions in format ["PA","AP"]. PA means posteroanterior (image trough the front), AP means anteroposterior (image trough the back)
 #OriginalImageWidth             =                                           # trivial as the dataset has converted all images to 1024
 #OriginalImageHeight            =                                           # trivial as the dataset has converted all images to 1024
@@ -48,18 +36,18 @@ exclusive_label                 = False                                     # if
 experiment_name                     = "Experiment_all_N3_i20"
 
 ### Differential Optimization--------
-differential_optimization           = True                                  # at the end apply differential optimization to the best combination of symmetry_percentage and proportional_lung_capacity
+enable_differential_optimization    = True                                  # at the end apply differential optimization to the best combination of symmetry_percentage and proportional_lung_capacity
 
 ### Multiprocessing------------------
-multiprocessing                     = True                                  # apply multiprocessing?
-core_percentage                     = 90                                    # percentage of CPU to use when multiprocessing
+multiprocessing                     = True                                 # apply multiprocessing?
+core_percentage                     = 75                                    # percentage of CPU to use when multiprocessing
 
 ### Input data location--------------
 csv_file_path                       = 'data/input/labels.csv'
 images_directory                    = 'data/input/images'
 
 ### max amount of images-------------
-max_images                          = 1000000                               # for if you only want to run a few images
+max_images                          = 10000                               # for if you only want to run a few images
 
 ### PSO------------------------------
 apply_PSO                           = False
@@ -73,13 +61,13 @@ save_iteration_list                 = [1,2,3,4,5,10,20]                     # li
 
 
 ### segmentation----------------------------
-apply_segmentation                  = False
+apply_segmentation                  = True
 
 #image_index                        =
 #PSO_image_relative_path            =
-segmentation_output_directory       = f"{experiment_name}/segmentation/images"
-save_intermediate                   = True
-segmentation_intermediate_directory = f"{experiment_name}/segmentation/intermediate_steps"
+segmentation_output_directory       = f"try/segmentation/images"                    # f"{experiment_name}/segmentation/images"
+save_intermediate                   = True                                  
+segmentation_intermediate_directory = f"try/segmentation/intermediate_steps"        # f"{experiment_name}/segmentation/intermediate_steps"
 
 
 ### differential function------------
@@ -89,7 +77,7 @@ apply_differential_function         = True
 #segmented_lung_image_relative_path =
 show_symmetry_line                  = False
 save_symmetry_line                  = True
-symmetry_output_directory           = f"try/symmetry_line/images" # f"{experiment_name}/symmetry_line/images"
+symmetry_output_directory           = f"try/symmetry_line/images"                   # f"{experiment_name}/symmetry_line/images"
 print_findings                      = False
 #================================================================================================
 
@@ -100,7 +88,7 @@ if apply_PSO:
 if apply_segmentation:
     os.makedirs(segmentation_output_directory, exist_ok=True)
     if save_intermediate:
-        os.makedirs(segmentation_output_directory, exist_ok=True)
+        os.makedirs(segmentation_intermediate_directory, exist_ok=True)
 if apply_differential_function:
     os.makedirs(symmetry_output_directory, exist_ok=True)
 
@@ -223,8 +211,8 @@ def main():
         for i, image_data_object in enumerate(image_data_objects):
             image_data_objects[i] = process_image(image_data_object)
          
-    if differential_optimization:
+    if enable_differential_optimization:
         differential_optimization(image_data_objects)
-    
+        
 if __name__ == "__main__":
     main()  # call the main function when the script is run directly

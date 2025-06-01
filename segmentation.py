@@ -9,50 +9,64 @@ def plot_segmentation_image(segmented_lung_image):
     plt.axis('off')
     plt.show()
 
-def generate_minimal_lung_image(image_name, image, save_intermediate, intermediate_directory):
-    
-    # ---------------- Step 0: Normalize brightness to avg 128 ----------------
-    mean_val = np.mean(image)
-    scale_factor = 128.0 / mean_val
-    normalized = np.clip(image.astype(np.float32) * scale_factor, 0, 255).astype(np.uint8)
-    if save_intermediate:
-        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_0_brightness_normalized.png'), normalized)
+def shade_thresholding(cropped, min_white_pixel_ratio=0.10):
+    """
+    Find a threshold such that, after applying to the full image, the central 20%–60% vertical region
+    (on a 20% cropped version) contains at least one fully black vertical line.
+    Falls back to second-to-last gray level if no suitable threshold found.
+    """
+    h, w = cropped.shape
+    total_pixels = h * w
 
-    # ---------------- Step 1: CLAHE contrast enhancement ----------------
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    enhanced = clahe.apply(image)
-    if save_intermediate:
-        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_1_clahe_enhanced.png'), enhanced)
+    # Define cropping margins
+    margin_h = int(0.2 * h)
+    margin_w = int(0.2 * w)
+    central = cropped[margin_h:h - margin_h, margin_w:w - margin_w]
 
-    # ---------------- Step 2: Crop 1% border ----------------
-    h, w = enhanced.shape
-    margin_h = int(0.01 * h)
-    margin_w = int(0.01 * w)
-    cropped = enhanced[margin_h:h - margin_h, margin_w:w - margin_w]
-    if save_intermediate:
-        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_2_cropped.png'), cropped)
+    # Define x-range for vertical line check in the central region
+    check_x_start = int(0.3 * central.shape[1])
+    check_x_end = int(0.7 * central.shape[1])
 
-    # ---------------- Step 3: Otsu thresholding ----------------
-    _, thresh = cv2.threshold(cropped, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    if save_intermediate:
-        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_3_otsu_threshold.png'), thresh)
-    
-    # ---------------- Step 4: Flood fill only on outer 15% ----------------
-    # Copy before flood fill
+    # Sorted unique grayscale levels (dark to light)
+    unique_vals = sorted(np.unique(cropped))
+
+    for threshold_val in unique_vals:
+        _, binary_mask_full = cv2.threshold(cropped, threshold_val, 255, cv2.THRESH_BINARY_INV)
+
+        # Crop binary mask and check for a full black vertical line
+        binary_central = binary_mask_full[margin_h:h - margin_h, margin_w:w - margin_w]
+        white_ratio_central = np.sum(binary_central == 255) / total_pixels
+        
+        if not white_ratio_central < min_white_pixel_ratio:     
+            for x in range(check_x_start, check_x_end):
+                column = binary_central[:, x]
+                if np.all(column == 0):  # Fully black line
+                    
+                    print(f"[INFO] Accepted threshold = {threshold_val} (black vertical line at x={x+(1024*0.2)})")
+                    return binary_mask_full
+
+    # Fallback to second-to-last threshold
+    if len(unique_vals) >= 2:
+        fallback_threshold = unique_vals[-2]
+        _, fallback_mask = cv2.threshold(cropped, fallback_threshold, 255, cv2.THRESH_BINARY_INV)
+        print(f"[WARNING] No vertical black line found. Fallback to second-to-last threshold = {fallback_threshold}")
+        return fallback_mask
+    else:
+        print("[ERROR] Only one gray level present. Returning full white mask as fallback.")
+        return np.ones_like(cropped, dtype=np.uint8) * 255
+
+def flood_fill_border(thresh, fill_limit = 0.15):
     cleared = thresh.copy()
     h_c, w_c = cleared.shape
     mask = np.zeros((h_c + 2, w_c + 2), np.uint8)
 
-    # Define central region
-    top = int(0.15 * h_c)
-    bottom = int(0.85 * h_c)
-    left = int(0.15 * w_c)
-    right = int(0.85 * w_c)
+    top = int(fill_limit * h_c)
+    bottom = int(1 - fill_limit * h_c)
+    left = int(fill_limit * w_c)
+    right = int(1 - fill_limit * w_c)
 
-    # Extract central region before flood fill
     central_region_before = cleared[top:bottom, left:right].copy()
 
-    # --- Perform unrestricted border flood fill ---
     for col in range(w_c):
         if cleared[0, col] == 255:
             cv2.floodFill(cleared, mask, (col, 0), 0)
@@ -64,47 +78,78 @@ def generate_minimal_lung_image(image_name, image, save_intermediate, intermedia
             cv2.floodFill(cleared, mask, (0, row), 0)
         if cleared[row, w_c - 1] == 255:
             cv2.floodFill(cleared, mask, (w_c - 1, row), 0)
-
-    # Restore central region
+    
     cleared[top:bottom, left:right] = central_region_before
 
-    if save_intermediate:
-        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_4_cleared_border.png'), cleared)
-        
-    # ---------------- Step 4.5: Draw center vertical black line ----------------
-    center_x = cleared.shape[1] // 2
-    cv2.line(cleared, (center_x, 0), (center_x, cleared.shape[0] - 1), color=0, thickness=1)
+    return cleared
+
+def expand_white_pixels(mask, radius=3):
+    """
+    Expand white pixels by a square neighborhood of size (2*radius + 1).
+    """
+    kernel_size = 2 * radius + 1
+    kernel = np.ones((kernel_size, kernel_size), np.uint8)
+    expanded = cv2.dilate(mask, kernel, iterations=1)
+    return expanded
+
+def generate_minimal_lung_image(image_name, image, save_intermediate, intermediate_directory):
+    # ---------------- Step 1: Cut off bottom 90 pixels and crop border 1% ----------------
+    h_orig, w_orig = image.shape
+    h_cut = h_orig - 90
+    image_cut = image[:h_cut, :]
+
+    margin_h = int(0.01 * h_cut)
+    margin_w = int(0.01 * w_orig)
+
+    cropped = image_cut[margin_h:h_cut - margin_h, margin_w:w_orig - margin_w]
+    h_cropped, w_cropped = cropped.shape
 
     if save_intermediate:
-        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_4b_with_center_line.png'), cleared)
+        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step1_cropped.png'), cropped)
 
-    # ---------------- Step 5: Keep the two largest contours ----------------
-    contours, _ = cv2.findContours(cleared, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # ---------------- Step 2: Shade Thresholding ----------------
+    thresh = shade_thresholding(cropped)
+    if save_intermediate:
+        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step2_shade_threshold.png'), thresh)
+
+    # ---------------- Step 3: Flood Fill Border ----------------
+    filled = flood_fill_border(thresh)
+    if save_intermediate:
+        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step3_flood_fill_border.png'), filled)
+
+    # ---------------- Step 4: Expand White Pixels ----------------
+    expanded = expand_white_pixels(filled)
+    if save_intermediate:
+        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step4_expand_white_pixels.png'), expanded)
+
+    # ---------------- Step 5: Draw Center Vertical Black Line ----------------
+    lined = expanded.copy()
+    center_x = lined.shape[1] // 2
+    cv2.line(lined, (center_x, 0), (center_x, lined.shape[0] - 1), color=0, thickness=1)
+    if save_intermediate:
+        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step5_center_line.png'), lined)
+
+    # ---------------- Step 6: Keep Two Largest Contours ----------------
+    contours, _ = cv2.findContours(lined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)[:2]
+
     contour_vis = np.zeros_like(cropped)
     cv2.drawContours(contour_vis, contours, -1, (255,), thickness=cv2.FILLED)
     if save_intermediate:
-        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_5_lung_contours.png'), contour_vis)
+        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step6_lung_contours.png'), contour_vis)
 
-    # ---------------- Step 6: Create lung mask and dilate ----------------
-    lung_mask = np.ones_like(cropped, dtype=np.uint8) * 255
-    cv2.drawContours(lung_mask, contours, -1, 0, thickness=cv2.FILLED)
-
-    kernel = np.ones((3, 3), np.uint8)
-    lung_mask = cv2.dilate(lung_mask, kernel, iterations=1)
-    if save_intermediate:
-        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_6_lung_mask_dilated.png'), lung_mask)
-
-    # ---------------- Step 7: Draw result and pad back ----------------
+    # ---------------- Step 7: Reconstruct Full-Sized Mask ----------------
     result_cropped = np.ones_like(cropped, dtype=np.uint8) * 255
     cv2.drawContours(result_cropped, contours, -1, (0,), thickness=cv2.FILLED)
     result_cropped = cv2.bitwise_not(result_cropped)
 
-    # Pad cropped result back to original size with black
-    result = cv2.copyMakeBorder(result_cropped, margin_h, h - h_c - margin_h, margin_w, w - w_c - margin_w, cv2.BORDER_CONSTANT, value=0)
-    
+    result = cv2.copyMakeBorder(result_cropped,
+                                margin_h, h_cut - margin_h - h_cropped,
+                                margin_w, w_orig - margin_w - w_cropped,
+                                cv2.BORDER_CONSTANT, value=0)
+
     if save_intermediate:
-        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_7_final_result.png'), result)
+        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step7_final_result.png'), result)
 
     return result
     
