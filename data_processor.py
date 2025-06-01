@@ -36,8 +36,21 @@ class ImageData:
         self.symmetry_percentage = symmetry_percentage
         self.proportional_lung_capacity = proportional_lung_capacity
 
-    def __repr__(self):
-        return f"ImageData(image_index='{self.image_index}', patient_id='{self.patient_id}')"
+    @property
+    def symmetry_percentage(self):
+        return self._symmetry_percentage
+
+    @symmetry_percentage.setter
+    def symmetry_percentage(self, value):
+        self._symmetry_percentage = value
+
+    @property
+    def proportional_lung_capacity(self):
+        return self._proportional_lung_capacity
+
+    @proportional_lung_capacity.setter
+    def proportional_lung_capacity(self, value):
+        self._proportional_lung_capacity = value
 
     def print_details(self):
         print(f"Image Index: {self.image_index}")
@@ -77,7 +90,7 @@ def pass_filter(image_index,
                 filter_patient_gender,
                 filter_view_position,
                 
-                filter_labels_mutially_exclusive):   
+                exclusive_label):   
     if ((filter_image_index[0]        != "any" and image_index        not in filter_image_index     ) or
         (filter_follow_up_number[0]   != "any" and follow_up_number   not in filter_follow_up_number) or
         (filter_patient_id[0]         != "any" and patient_id         not in filter_patient_id      ) or
@@ -86,21 +99,17 @@ def pass_filter(image_index,
         (filter_view_position[0]      != "any" and view_position      not in filter_view_position   )):
         return False
     
-    labels = labels.split("|")
-    
-    if filter_labels_mutially_exclusive:
+    if exclusive_label:
         if len(labels) > 1:
             return False
         if len(labels) == 1:
-            for label in labels:
-                if label not in filter_labels:
-                    return False
+            if labels[0] in filter_labels:
+                return True
     else:
         for label in labels:
-            if label not in filter_labels:
-                return False
-
-    return True
+            if label in filter_labels:
+                return True
+    return False
 
 def create_image_objects(csv_path, 
                          image_folder,
@@ -113,7 +122,8 @@ def create_image_objects(csv_path,
                          filter_patient_age,
                          filter_patient_gender,
                          filter_view_position,
-                         filter_labels_mutially_exclusive = False):
+                         
+                         exclusive_label = False):
     """
     Reads the CSV file and creates ImageData objects, attempting to associate
     them with image files in the specified folder.
@@ -137,7 +147,7 @@ def create_image_objects(csv_path,
     for index, row in df.iterrows():
         if len(image_objects) < max_images:
             image_index = row['Image Index']
-            labels = row['Finding Labels']
+            labels = row['Finding Labels'].split('|')
             follow_up_number = row['Follow-up #']
             patient_id = row['Patient ID']
             patient_age = row['Patient Age']
@@ -183,7 +193,7 @@ def create_image_objects(csv_path,
                         filter_patient_age,
                         filter_patient_gender,
                         filter_view_position,
-                        filter_labels_mutially_exclusive):
+                        exclusive_label):
                 image_data_object = ImageData(
                     image_index=image_index,
                     labels=labels,
