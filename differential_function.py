@@ -141,12 +141,9 @@ def differential_optimization(image_data_objects):
     # Run threshold optimizer
     print(f"Balanced dataset: {len(balanced_atelectasis)} 'Atelectasis' and {len(balanced_no_finding)} 'No Finding'")
     optimized = oth.optimize_thresholds(balanced_result_list, positive_label='Atelectasis', resolution=30)
-    best_acc = optimized['best_accuracy']
+    train_acc = optimized['train_accuracy']
+    test_acc = optimized['test_accuracy']
     best_threshold = optimized['threshold']
     weight_symmetry = optimized['weight_symmetry']
     weight_capacity = optimized['weight_capacity']
-    print(f"best_accuracy: {best_acc}, weight_symmetry: {weight_symmetry}, weight_capacity: {weight_capacity},threshold: {best_threshold}")
-    
-    for result in balanced_result_list:
-        if result['label'] == 'Atelectasis':
-            print(f"{result['image_index']}, {result['label']}, symmetry_percentage: {result['symmetry_percentage']}, proportional_lung_capacity : {result['proportional_lung_capacity']}, {(weight_symmetry * result['symmetry_percentage'] + weight_capacity * result['proportional_lung_capacity']) < best_threshold}")
+    print(f"train_accuracy: {train_acc}, test_accuracy: {test_acc}, weight_symmetry: {weight_symmetry}, weight_capacity: {weight_capacity},threshold: {best_threshold}")
