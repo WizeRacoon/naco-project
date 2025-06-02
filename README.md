@@ -5,9 +5,13 @@ data -> sample dataset (5% of the full dataset), available via [Link to sample d
 
 archive -> full dataset (not uploaded because its 46GB...), available via [Link to full dataset on Kaggle](https://www.kaggle.com/datasets/nih-chest-xrays/data)
 
+**--- DATASET A ---**
+
 only_PA -> only atelectasis-normal on PA view. This is because the PA view data seems to be better (by eyeballing the data).
 
-[Link to only-pa dataset on Kaggle.](https://www.kaggle.com/datasets/lisanneweidmann/only-pa)
+- [Link to only-pa (raw) dataset on Kaggle.](https://www.kaggle.com/datasets/lisanneweidmann/only-pa)
+- [Link to only-PA (PSO 5 iterations applied) dataset on Kaggle]( https://www.kaggle.com/datasets/lisanneweidmann/only-pa-pso5)
+
 ```
 $ python3 count_occurrences.py 
 directory_path='./only_PA/train/NORMAL'
@@ -72,9 +76,12 @@ Directory: ./only_PA/test_3/ATELECTASIS
   No Finding: 0
 ```
 
+**--- DATASET B ---**
+
 PA-AP_atelectasis-normal -> as close as possible 50-50 division on both atelectasis-normal and PA-AP view. It's not possible to achieve a perfect 50-50 division, but with count_occurrences.py you can see that it's pretty close.
 
-[Link to PA-AP_atelectasis-normal dataset on Kaggle](https://www.kaggle.com/datasets/lisanneweidmann/pa-ap-atelectasis-normal)
+- [Link to PA-AP_atelectasis-normal (raw) dataset on Kaggle](https://www.kaggle.com/datasets/lisanneweidmann/pa-ap-atelectasis-normal)
+- [Link to PA-AP_atelectasis-normal (PSO 5 iterations applied) dataset on Kaggle](https://www.kaggle.com/datasets/lisanneweidmann/pa-ap-atelectasis-normal-pso5)
 ```
 $ python3 count_occurrences.py 
 directory_path='./PA-AP_atelectasis-normal/train/NORMAL'
@@ -138,6 +145,9 @@ Directory: ./PA-AP_atelectasis-normal/test_3/ATELECTASIS
   Atelectasis: 457
   No Finding: 0
 ```
+
+**--- DATASET C ---**
+
 only_PA-and-ATELECTASIS -> Only images taken from standard position PA, and the images have only the label 'No Findings' or 'Atelectasis' (so no other diseases known to be associated with the patient!). 
 
 [Link to only-pa-and-atelectasis dataset on Kaggle.](https://www.kaggle.com/datasets/lisanneweidmann/only-pa-and-atelectasis)
@@ -204,8 +214,5 @@ Directory: ./only_PA-and-A/test_3/ATELECTASIS
   Atelectasis: 107
   No Finding: 0
 ```
-
-- [Link to only-PA (PSO 5 iterations applied) dataset on Kaggle]( https://www.kaggle.com/datasets/lisanneweidmann/only-pa-pso5)
-- [Link to PA-AP_atelectasis-normal (PSO 5 iterations applied) dataset on Kaggle](https://www.kaggle.com/datasets/lisanneweidmann/pa-ap-atelectasis-normal-pso5)
 
 
