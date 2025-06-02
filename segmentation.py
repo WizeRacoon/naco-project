@@ -93,32 +93,37 @@ def expand_white_pixels(mask, radius=3):
     return expanded
 
 def generate_minimal_lung_image(image_name, image, save_intermediate, intermediate_directory):
-    # ---------------- Step 1: Cut off bottom 90 pixels and crop border 1% ----------------
+    # ---------------- Step 1: Cut off bottom 90 pixels ----------------
     h_orig, w_orig = image.shape
     h_cut = h_orig - 90
     image_cut = image[:h_cut, :]
-
-    margin_h = int(0.01 * h_cut)
-    margin_w = int(0.01 * w_orig)
-
-    cropped = image_cut[margin_h:h_cut - margin_h, margin_w:w_orig - margin_w]
-    h_cropped, w_cropped = cropped.shape
-
+    
     if save_intermediate:
-        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step1_cropped.png'), cropped)
+        cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step1_cut.png'), image_cut)
 
     # ---------------- Step 2: Shade Thresholding ----------------
-    thresh = shade_thresholding(cropped)
+    thresh = shade_thresholding(image_cut)
     if save_intermediate:
         cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step2_shade_threshold.png'), thresh)
 
-    # ---------------- Step 3: Flood Fill Border ----------------
-    filled = flood_fill_border(thresh)
+
+    # ---------------- Step 3: Flood Fill Border with 1% Blacked Out ----------------
+    margin_h = int(0.01 * h_cut)
+    margin_w = int(0.01 * w_orig)
+
+    thresh_masked = thresh.copy()
+    # Black out 1% margins
+    thresh_masked[:margin_h, :] = 255
+    thresh_masked[-margin_h:, :] = 255
+    thresh_masked[:, :margin_w] = 255
+    thresh_masked[:, -margin_w:] = 255
+
+    filled = flood_fill_border(thresh_masked)
     if save_intermediate:
         cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step3_flood_fill_border.png'), filled)
 
     # ---------------- Step 4: Expand White Pixels ----------------
-    expanded = expand_white_pixels(filled)
+    expanded = expand_white_pixels(filled, 3)
     if save_intermediate:
         cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step4_expand_white_pixels.png'), expanded)
 
@@ -133,20 +138,15 @@ def generate_minimal_lung_image(image_name, image, save_intermediate, intermedia
     contours, _ = cv2.findContours(lined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)[:2]
 
-    contour_vis = np.zeros_like(cropped)
+    contour_vis = np.zeros_like(image_cut)
     cv2.drawContours(contour_vis, contours, -1, (255,), thickness=cv2.FILLED)
     if save_intermediate:
         cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step6_lung_contours.png'), contour_vis)
 
-    # ---------------- Step 7: Reconstruct Full-Sized Mask ----------------
-    result_cropped = np.ones_like(cropped, dtype=np.uint8) * 255
-    cv2.drawContours(result_cropped, contours, -1, (0,), thickness=cv2.FILLED)
-    result_cropped = cv2.bitwise_not(result_cropped)
-
-    result = cv2.copyMakeBorder(result_cropped,
-                                margin_h, h_cut - margin_h - h_cropped,
-                                margin_w, w_orig - margin_w - w_cropped,
-                                cv2.BORDER_CONSTANT, value=0)
+    # ---------------- Step 7: Final Result ----------------
+    result = np.ones_like(image_cut, dtype=np.uint8) * 255
+    cv2.drawContours(result, contours, -1, (0,), thickness=cv2.FILLED)
+    result = cv2.bitwise_not(result)
 
     if save_intermediate:
         cv2.imwrite(os.path.join(intermediate_directory, f'{image_name}_step7_final_result.png'), result)
