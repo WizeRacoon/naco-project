@@ -10,7 +10,7 @@ from collections import defaultdict
 # Here, you can adjust which data to consider. If you want to consider all data of a class, just state the list ["any"] (this cannot be done for the "labels" class)
 
 image_index                     = ["any"]                                   # list of indeces of image; unique identifier in the form "'patient_id' + '_' + 'follow_up_number' + '.png'"
-labels                          = ["No Finding", "Atelectasis"]             # list of labels (diseases). Possibilities: ["No Finding", "Atelectasis", "Consolidation", "Infiltration", "Pneumothorax", "Edema", "Emphysema", "Fibrosis", "Effusion", "Pneumonia", "Pleural_Thickening", "Cardiomegaly", "Nodule", "Mass", "Hernia"]
+labels                          = ["No Finding", "Atelectasis", "Consolidation", "Infiltration", "Pneumothorax", "Edema", "Emphysema", "Fibrosis", "Effusion", "Pneumonia", "Pleural_Thickening", "Cardiomegaly", "Nodule", "Mass", "Hernia"]             # list of labels (diseases). Possibilities: ["No Finding", "Atelectasis", "Consolidation", "Infiltration", "Pneumothorax", "Edema", "Emphysema", "Fibrosis", "Effusion", "Pneumonia", "Pleural_Thickening", "Cardiomegaly", "Nodule", "Mass", "Hernia"]
 follow_up_number                = ["any"]                                   # list of number of patients' xray image (e.g, their 25th xray image)
 patient_id                      = ["any"]
 patient_age                     = ["any"]                                   # list of ages in format 'XXXY', where the 3 X's denote the age, and 'Y' is an abbreviation for year. e.g., '059Y' means the patient is 59 years old
@@ -32,36 +32,38 @@ exclusive_label                 = False                                     # if
 experiment_name                     = "Experiment_all_N3_i20"
 
 ### Multiprocessing------------------
-multiprocessing                     = True                                                          # apply multiprocessing?
-core_percentage                     = 75                                                            # percentage of CPU to use when multiprocessing
+multiprocessing                     = True                                                              # apply multiprocessing?
+core_percentage                     = 75                                                                # percentage of CPU to use when multiprocessing
 
 ### Input data location--------------
 csv_file_path                       = 'data/input/labels.csv'
 images_directory                    = 'data/input/images'
 
 ### max amount of images-------------
-max_images                          = 1000000                                                       # for if you only want to run a few images
+max_images                          = 1000000                                                           # for if you only want to run a few images
 
 ### PSO------------------------------
 apply_pso                           = False
 
-n                                   = 20                                                            # number of palettes (particles)
-N                                   = 3                                                             # number of colors in each palette
-max_iterations                      = 20                                                            # maximum number of iterations
+n                                   = 20                                                                # number of palettes (particles)
+N                                   = 3                                                                 # number of colors in each palette
+max_iterations                      = 20                                                                # maximum number of iterations
 #image_path                         =
 pso_output_directory                = f"{experiment_name}/PSO/images"
-save_iteration_list                 = [1,2,3,4,5,10,20]                                             # list of PSO iterations to be saved as an image
+save_iteration_list                 = [1,2,3,4,5,10,20]                                                 # list of PSO iterations to be saved as an image
 
 
 ### differential function------------
 apply_differential_function         = True
+on_pso_iteration                    = 20                                                                # iteration at which the differential function is applied
 
 #image_index                        =
 #PSO_image_relative_path            =
-save_symmetry_line                  = True                                                           # save the symmetry line image in differential_output_directory   
-save_intermediate_steps             = True                                                           # save the intermedate segmentation steps also (including symmetry line) in differential_output_directory                         
+save_symmetry_line                  = True                                                              # save the symmetry line image in differential_output_directory   
+save_intermediate_steps             = True                                                              # save the intermedate segmentation steps also (including symmetry line) in differential_output_directory                         
 differential_output_directory       = f"{experiment_name}/differential_function/images"
-enable_differential_optimization    = True                                                           # at the end apply differential optimization to the best combination of symmetry_percentage and proportional_lung_capacity
+enable_differential_optimization    = True                                                              # at the end apply differential optimization to the best combination of symmetry_percentage and proportional_lung_capacity
+number_of_trails                    = 10                                                                # number of times to run the differential optimization (with different random train/test plits)
 
 #================================================================================================
 
@@ -88,12 +90,18 @@ def process_image(image_data_object):
             output_directory=pso_output_directory,
             save_iteration_list=save_iteration_list
         )
+        
+    # For if the pso converges earlier and a later iteration does not exist
+    for i in range(on_pso_iteration):
+        if os.path.isfile(f"{pso_output_directory}/{image_name}/lung_position_clip/velocity_clip/lung_reconstructed_palette_iter_{on_pso_iteration - i}.png"):
+            pso_iteration = on_pso_iteration - i
+        i += 1
 
     if apply_differential_function:
         print(f"[{image_name}] - applying differential function")
         symmetry_x, segmented_image = df.further_segmentation(
             image_name=image_name,
-            pso_image_relative_path=f"{pso_output_directory}/{image_name}/lung_position_clip/velocity_clip/lung_reconstructed_palette_iter_{max_iterations}.png",
+            pso_image_relative_path=f"{pso_output_directory}/{image_name}/lung_position_clip/velocity_clip/lung_reconstructed_palette_iter_{pso_iteration}.png",
             save_symmetry_line=save_symmetry_line,
             save_intermediate_steps=save_intermediate_steps,
             differential_output_directory=differential_output_directory
@@ -132,7 +140,7 @@ def main():
             image_data_objects[i] = process_image(image_data_object)
          
     if enable_differential_optimization:
-        df.differential_optimization(image_data_objects)
+        df.differential_optimization(image_data_objects, number_of_trails)
         
 if __name__ == "__main__":
     main()  # call the main function when the script is run directly

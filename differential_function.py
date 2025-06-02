@@ -101,49 +101,49 @@ def calc_lung_symmetry(symmetry_x, segmented_image):
    
     return symmetry_percentage, proportional_lung_capacity
     
-def differential_optimization(image_data_objects):
-    count_atelectasis = 0
-    count_no_finding = 0
-    for image_data_object in image_data_objects:
-        if image_data_object.labels[0] == 'No Finding':
-            count_no_finding += 1
-        if len(image_data_object.labels) == 1 and image_data_object.labels[0] == 'Atelectasis':
-            count_atelectasis += 1
-    
-    print(f"no findings: {count_no_finding}, atelectasis: {count_atelectasis}")
-        
+def differential_optimization(image_data_objects, number_of_trails, resolution=30, test_size=0.2):
     # Group data by label
     label_groups = defaultdict(list)
-    for image_data_object in image_data_objects:
-        label = image_data_object.labels[0]
+    for obj in image_data_objects:
+        label = obj.labels[0]
         label_groups[label].append({
-            'image_index': image_data_object.image_index,
-            'symmetry_percentage': image_data_object.symmetry_percentage,
-            'proportional_lung_capacity': image_data_object.proportional_lung_capacity,
+            'image_index': obj.image_index,
+            'symmetry_percentage': obj.symmetry_percentage,
+            'proportional_lung_capacity': obj.proportional_lung_capacity,
             'label': label
         })
 
-    # Get "Atelectasis" and "No Finding" groups
     atelectasis_group = label_groups.get('Atelectasis', [])
     no_finding_group = label_groups.get('No Finding', [])
-
-    # Find the smaller group size
     min_len = min(len(atelectasis_group), len(no_finding_group))
 
-    # Randomly sample both to equal size
-    balanced_atelectasis = random.sample(atelectasis_group, min_len)
-    balanced_no_finding = random.sample(no_finding_group, min_len)
+    train_accuracies = []
+    test_accuracies = []
+    best_configs = []
 
-    # Combine to create balanced result_list
-    balanced_result_list = balanced_atelectasis + balanced_no_finding
-    random.shuffle(balanced_result_list)  # Optional: shuffle to remove ordering bias
+    for trial in range(number_of_trails):
+        seed = 42 + trial
+        rng = random.Random(seed)
 
-    # Run threshold optimizer
-    print(f"Balanced dataset: {len(balanced_atelectasis)} 'Atelectasis' and {len(balanced_no_finding)} 'No Finding'")
-    optimized = oth.optimize_thresholds(balanced_result_list, positive_label='Atelectasis', resolution=30)
-    train_acc = optimized['train_accuracy']
-    test_acc = optimized['test_accuracy']
-    best_threshold = optimized['threshold']
-    weight_symmetry = optimized['weight_symmetry']
-    weight_capacity = optimized['weight_capacity']
-    print(f"train_accuracy: {train_acc}, test_accuracy: {test_acc}, weight_symmetry: {weight_symmetry}, weight_capacity: {weight_capacity},threshold: {best_threshold}")
+        balanced_atelectasis = rng.sample(atelectasis_group, min_len)
+        balanced_no_finding = rng.sample(no_finding_group, min_len)
+        balanced_result_list = balanced_atelectasis + balanced_no_finding
+        rng.shuffle(balanced_result_list)
+
+        result = oth.optimize_thresholds(
+            balanced_result_list,
+            positive_label='Atelectasis',
+            resolution=resolution,
+            test_size=test_size,
+            random_seed=seed
+        )
+
+        train_accuracies.append(result['train_accuracy'])
+        test_accuracies.append(result['test_accuracy'])
+        best_configs.append(result['best_config'])
+
+    print(f"Balanced dataset per trial: {min_len} 'Atelectasis' and {min_len} 'No Finding'")
+    print(f"train_acc_mean: {np.mean(train_accuracies)}, train_acc_std: {np.std(train_accuracies)}")
+    print(f"test_acc_mean: {np.mean(test_accuracies)}, test_acc_std: {np.std(test_accuracies)}")
+    for i, (w1, w2, thresh) in enumerate(best_configs):
+        print(f"Trial {i+1}: w1={w1}, w2={w2}, threshold={thresh}")
