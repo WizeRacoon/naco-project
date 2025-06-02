@@ -1,167 +1,152 @@
-from PIL import Image, ImageDraw
+import differential_function_helpers.further_segmentation_helper as fsh, differential_function_helpers.lung_symmetry_helper as lsh, differential_function_helpers.optimize_threshold_helper as oth
+import os
+import cv2
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.ndimage import label, center_of_mass, find_objects
-from sklearn.metrics import accuracy_score
+import random
+from collections import defaultdict
 
-def calc_lung_symmetry_line(binary):
-    '''
-                # Label connected components (assumes lungs are the 2 largest white blobs)
-                labeled, num_features = label(binary)
-                
-                # Find centroids of components
-                centroids = center_of_mass(binary, labeled, range(1, num_features + 1))
-                
-                # Get x-positions of the two lung centroids
-                x_centroids = [c[1] for c in centroids] # I don't really get why there are many more of x_centroids then 2
-                
-                # Midpoint between two lungs
-                symmetry_x = int((x_centroids[0] + x_centroids[1]) / 2)
-                
-                return symmetry_x
-    '''
-
-    # Label connected components
-    labeled, num_features = label(binary)
-
-    # Find bounding boxes of each component
-    slices = find_objects(labeled)
-
-    # Calculate the center x-position of each bounding box
-    x_centers = []
-    for sl in slices:
-        if sl is None:
-            continue
-        x_center = (sl[1].start + sl[1].stop) / 2
-        x_centers.append(x_center)
-
-    # Pick two largest components and get midpoint of their bounding boxes
-    sizes = [(labeled == (i + 1)).sum() for i in range(num_features)]
-    largest_indices = np.argsort(sizes)[-2:]
-    x_pair = sorted([x_centers[i] for i in largest_indices])
-    symmetry_x = int(sum(x_pair) / 2)
+def full_segmentation(image_name, image, save_symmetry_line, save_intermediate_steps, differential_directory):
+    # ---------------- Step 1: Cut off bottom 90 pixels ----------------
+    h_orig, w_orig = image.shape
+    h_cut = h_orig - 90
+    image_cut = image[:h_cut, :]
     
-    return symmetry_x
+    if save_intermediate_steps:
+        cv2.imwrite(os.path.join(differential_directory, f'{image_name}_step1_cut.png'), image_cut)
 
-def plot_symmetry_line(image_index, image, symmetry_x, height, width, show_symmetry_line, save_symmetry_line, symmetry_output_directory):
+    # ---------------- Step 2: Shade Thresholding ----------------
+    thresh = fsh.shade_thresholding(image_cut)
+    if save_intermediate_steps:
+        cv2.imwrite(os.path.join(differential_directory, f'{image_name}_step2_shade_threshold.png'), thresh)
+
+
+    # ---------------- Step 3: Flood Fill Border with 1% Blacked Out ----------------
+    margin_h = int(0.01 * h_cut)
+    margin_w = int(0.01 * w_orig)
+
+    thresh_masked = thresh.copy()
+    # Black out 1% margins
+    thresh_masked[:margin_h, :] = 255
+    thresh_masked[-margin_h:, :] = 255
+    thresh_masked[:, :margin_w] = 255
+    thresh_masked[:, -margin_w:] = 255
+
+    filled = fsh.flood_fill_border(thresh_masked)
+    if save_intermediate_steps:
+        cv2.imwrite(os.path.join(differential_directory, f'{image_name}_step3_flood_fill_border.png'), filled)
+
+    # ---------------- Step 4: Expand White Pixels ----------------
+    expanded = fsh.expand_white_pixels(filled, 3)
+    if save_intermediate_steps:
+        cv2.imwrite(os.path.join(differential_directory, f'{image_name}_step4_expand_white_pixels.png'), expanded)
+
+    # ---------------- Step 5: Draw Center Vertical Black Line ----------------
+    lined = expanded.copy()
+    center_x = lined.shape[1] // 2
+    cv2.line(lined, (center_x, 0), (center_x, lined.shape[0] - 1), color=0, thickness=1)
+    if save_intermediate_steps:
+        cv2.imwrite(os.path.join(differential_directory, f'{image_name}_step5_center_line.png'), lined)
+
+    # ---------------- Step 6: Keep Two Largest Contours ----------------
+    contours, _ = cv2.findContours(lined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:2]
+
+    contour_vis = np.zeros_like(image_cut)
+    cv2.drawContours(contour_vis, contours, -1, (255,), thickness=cv2.FILLED)
+    if save_intermediate_steps:
+        cv2.imwrite(os.path.join(differential_directory, f'{image_name}_step6_lung_contours.png'), contour_vis)
+
+    # ---------------- Step 7: Segmentation Result ----------------
+    result = np.ones_like(image_cut, dtype=np.uint8) * 255
+    cv2.drawContours(result, contours, -1, (0,), thickness=cv2.FILLED)
+    result = cv2.bitwise_not(result)
+
+    if save_intermediate_steps:
+        cv2.imwrite(os.path.join(differential_directory, f'{image_name}_step7_segmentation_result.png'), result)
+        
+    # ---------------- Step 8: Lung Symmetry ----------------
+    binary = np.array(result) > 128
+    binary = binary.astype(int)
+    height, width = binary.shape
+
+    symmetry_x = lsh.calc_lung_symmetry_line(binary)
+
+    # Create a color version of the result image for drawing in color
+    symmetry_line = cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
+
+    # Draw vertical red line of 5 pixels wide centered at symmetry_x
+    for x in range(symmetry_x - 2, symmetry_x + 3):
+        if 0 <= x < width:
+            cv2.line(symmetry_line, (x, 0), (x, height - 1), (0, 0, 255), 1)
+
+    if save_intermediate_steps or save_symmetry_line:
+        cv2.imwrite(os.path.join(differential_directory, f'{image_name}_step8_symmetry_line.png'), symmetry_line)
+
+    return symmetry_x, result
     
-    # Draw red line
-    image_rgb = image.convert("RGB")
-    draw = ImageDraw.Draw(image_rgb)
-    draw.line([(symmetry_x, 0), (symmetry_x, height)], fill=(255, 0, 0), width=5)
+def further_segmentation(image_name, pso_image_relative_path, save_symmetry_line, save_intermediate_steps, differential_output_directory):
+    # Load image in grayscale
+    pso_image = cv2.imread(pso_image_relative_path, cv2.IMREAD_GRAYSCALE)
 
-    # Show image (if running in Jupyter or local script)
-    if show_symmetry_line:
-        image_rgb.show()
-    if save_symmetry_line:
-        image_rgb.save(f"{symmetry_output_directory}/{image_index}")
-    
-def calc_lung_symmetry_percentage(symmetry_x, binary, height, width):
-    # Symmetry calculation around symmetry_x
-    count_total = 0
-    count_symmetric = 0
+    return full_segmentation(image_name, pso_image, save_symmetry_line, save_intermediate_steps, differential_output_directory)
 
-    for x in range(0, symmetry_x):
-        mirror_x = 2 * symmetry_x - x
-        if mirror_x >= width:
-            continue
-        for y in range(height):
-            if binary[y, x] == 1:
-                count_total += 1
-                if binary[y, mirror_x] == 1:
-                    count_symmetric += 1
-                    
-    symmetry_percentage = (count_symmetric / count_total) if count_total > 0 else 0
-    
-    return symmetry_percentage
-
-def calc_proportional_lung_capacity(symmetry_x, binary, height, width):
-    # The multiple of which the larger lung is larger then the smaller lung
-    count_total_left = 0
-    count_total_right = 0
-
-    for x in range(0, symmetry_x):
-        for y in range(height):
-            if binary[y, x] == 1:
-                count_total_left += 1
-    
-    for x in range(symmetry_x, width):
-        for y in range(height):
-            if binary[y, x] == 1:
-                count_total_right += 1
-                
-    if count_total_left < count_total_right:
-        proportional_lung_capacity = count_total_right / count_total_left
-    else:
-        proportional_lung_capacity = count_total_left / count_total_right
-                    
-    return proportional_lung_capacity
-
-def calc_lung_symmetry(image_index, segmented_lung_image_relative_path, show_symmetry_line = False, save_symmetry_line = False, symmetry_output_directory = "symmetry_line", print_findings = False):
+def calc_lung_symmetry(symmetry_x, segmented_image):
     # Load and binarize the image
-    image = Image.open(segmented_lung_image_relative_path).convert("L")
-    binary = np.array(image) > 128
+    binary = segmented_image > 128
     binary = binary.astype(int)
     height, width = binary.shape
     
-    symmetry_x = calc_lung_symmetry_line(binary)
-    symmetry_percentage = calc_lung_symmetry_percentage(symmetry_x, binary, height, width)
-    proportional_lung_capacity = calc_proportional_lung_capacity(symmetry_x, binary, height, width)
-    
-    if show_symmetry_line or save_symmetry_line:
-        plot_symmetry_line(image_index, image, symmetry_x, height, width, show_symmetry_line, save_symmetry_line, symmetry_output_directory)
-
-    if print_findings:
-        print(f"Optimal symmetry line x = {symmetry_x}")
-        print(f"Symmetry percentage = {(symmetry_percentage*100):.2f}%")
-        print(f"proportional lung capacity = {proportional_lung_capacity}x")
-        print("\n")
-        
+    symmetry_percentage = lsh.calc_lung_symmetry_percentage(symmetry_x, binary, height, width)
+    proportional_lung_capacity = lsh.calc_proportional_lung_capacity(symmetry_x, binary, height, width)
+   
     return symmetry_percentage, proportional_lung_capacity
+    
+def differential_optimization(image_data_objects):
+    count_atelectasis = 0
+    count_no_finding = 0
+    for image_data_object in image_data_objects:
+        if image_data_object.labels[0] == 'No Finding':
+            count_no_finding += 1
+        if len(image_data_object.labels) == 1 and image_data_object.labels[0] == 'Atelectasis':
+            count_atelectasis += 1
+    
+    print(f"no findings: {count_no_finding}, atelectasis: {count_atelectasis}")
+        
+    # Group data by label
+    label_groups = defaultdict(list)
+    for image_data_object in image_data_objects:
+        label = image_data_object.labels[0]
+        label_groups[label].append({
+            'image_index': image_data_object.image_index,
+            'symmetry_percentage': image_data_object.symmetry_percentage,
+            'proportional_lung_capacity': image_data_object.proportional_lung_capacity,
+            'label': label
+        })
 
-def optimize_thresholds(result_list, positive_label, resolution=10):
-    # Prepare data
-    symmetry = []
-    capacity = []
-    labels = []
+    # Get "Atelectasis" and "No Finding" groups
+    atelectasis_group = label_groups.get('Atelectasis', [])
+    no_finding_group = label_groups.get('No Finding', [])
 
-    for item in result_list:
-        if item['symmetry_percentage'] is None or item['proportional_lung_capacity'] is None:
-            continue  # Skip incomplete data
-        symmetry.append(item['symmetry_percentage'])
-        capacity.append(item['proportional_lung_capacity'])
-        labels.append(item['label'])
+    # Find the smaller group size
+    min_len = min(len(atelectasis_group), len(no_finding_group))
 
-    symmetry = np.array(symmetry)
-    capacity = np.array(capacity)
-    labels = np.array(labels)
+    # Randomly sample both to equal size
+    balanced_atelectasis = random.sample(atelectasis_group, min_len)
+    balanced_no_finding = random.sample(no_finding_group, min_len)
 
-    # Convert labels to binary (1 = positive, 0 = negative)
-    binary_labels = (labels == positive_label).astype(int)
+    # Combine to create balanced result_list
+    balanced_result_list = balanced_atelectasis + balanced_no_finding
+    random.shuffle(balanced_result_list)  # Optional: shuffle to remove ordering bias
 
-    best_acc = 0
-    best_weights = (None, None)
-    best_threshold = None
-
-    # Try weight combinations and thresholds
-    w1_range = np.linspace(0, 1000, resolution)
-    w2_range = np.linspace(0, 1000, resolution)
-
-    for w1 in w1_range:
-        for w2 in w2_range:
-            scores = w1 * symmetry + w2 * capacity
-            thresholds = np.linspace(scores.min(), scores.max(), resolution)
-            for threshold in thresholds:
-                predictions = (scores > threshold).astype(int)
-                acc = accuracy_score(binary_labels, predictions)
-                if acc > best_acc:
-                    best_acc = acc
-                    best_weights = (w1, w2)
-                    best_threshold = threshold
-
-    return {
-        'best_accuracy': best_acc,
-        'weight_symmetry': best_weights[0],
-        'weight_capacity': best_weights[1],
-        'threshold': best_threshold
-    }
+    # Run threshold optimizer
+    print(f"Balanced dataset: {len(balanced_atelectasis)} 'Atelectasis' and {len(balanced_no_finding)} 'No Finding'")
+    optimized = oth.optimize_thresholds(balanced_result_list, positive_label='Atelectasis', resolution=30)
+    best_acc = optimized['best_accuracy']
+    best_threshold = optimized['threshold']
+    weight_symmetry = optimized['weight_symmetry']
+    weight_capacity = optimized['weight_capacity']
+    print(f"best_accuracy: {best_acc}, weight_symmetry: {weight_symmetry}, weight_capacity: {weight_capacity},threshold: {best_threshold}")
+    
+    for result in balanced_result_list:
+        if result['label'] == 'Atelectasis':
+            print(f"{result['image_index']}, {result['label']}, symmetry_percentage: {result['symmetry_percentage']}, proportional_lung_capacity : {result['proportional_lung_capacity']}, {(weight_symmetry * result['symmetry_percentage'] + weight_capacity * result['proportional_lung_capacity']) < best_threshold}")
