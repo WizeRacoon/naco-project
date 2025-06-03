@@ -150,7 +150,8 @@ Directory: ./PA-AP_atelectasis-normal/test_3/ATELECTASIS
 
 only_PA-and-ATELECTASIS -> Only images taken from standard position PA, and the images have only the label 'No Findings' or 'Atelectasis' (so no other diseases known to be associated with the patient!). 
 
-[Link to only-pa-and-atelectasis dataset on Kaggle.](https://www.kaggle.com/datasets/lisanneweidmann/only-pa-and-atelectasis)
+- [Link to only-pa-and-atelectasis (raw) dataset on Kaggle.](https://www.kaggle.com/datasets/lisanneweidmann/only-pa-and-atelectasis)
+- [Link to only-pa-and-atelectasis (PSO 5 iterations applied) dataset on Kaggle.](https://www.kaggle.com/datasets/lisanneweidmann/only-pa-atelectasis-pso5)
 ```
 $ python3 count_occurrences.py 
 directory_path='./only_PA-and-A/train/NORMAL'
