@@ -101,7 +101,7 @@ def calc_lung_symmetry(symmetry_x, segmented_image):
    
     return symmetry_percentage, proportional_lung_capacity
     
-def differential_optimization(image_data_objects, number_of_trails, resolution=30, test_size=0.2):
+def differential_optimization(image_data_objects, number_of_trails, max_dataset_size = 1000000000, resolution=30, test_size=0.2):
     # Group data by label
     label_groups = defaultdict(list)
     for obj in image_data_objects:
@@ -115,7 +115,7 @@ def differential_optimization(image_data_objects, number_of_trails, resolution=3
 
     atelectasis_group = label_groups.get('Atelectasis', [])
     no_finding_group = label_groups.get('No Finding', [])
-    min_len = min(len(atelectasis_group), len(no_finding_group))
+    min_len = min(min(len(atelectasis_group), len(no_finding_group)), max_dataset_size)
 
     train_accuracies = []
     test_accuracies = []

@@ -58,12 +58,13 @@ apply_differential_function         = True
 on_pso_iteration                    = 20                                                                # iteration at which the differential function is applied
 
 #image_index                        =
-#PSO_image_relative_path            =
+#pso_image_relative_path            =
 save_symmetry_line                  = True                                                              # save the symmetry line image in differential_output_directory   
 save_intermediate_steps             = True                                                              # save the intermedate segmentation steps also (including symmetry line) in differential_output_directory                         
 differential_output_directory       = f"{experiment_name}/differential_function/images"
 enable_differential_optimization    = True                                                              # at the end apply differential optimization to the best combination of symmetry_percentage and proportional_lung_capacity
 number_of_trails                    = 10                                                                # number of times to run the differential optimization (with different random train/test plits)
+max_dataset_size                    = 100                                                               # max amount of images to use for differential optimization
 
 #================================================================================================
 
@@ -140,7 +141,7 @@ def main():
             image_data_objects[i] = process_image(image_data_object)
          
     if enable_differential_optimization:
-        df.differential_optimization(image_data_objects, number_of_trails)
+        df.differential_optimization(image_data_objects, number_of_trails, max_dataset_size)
         
 if __name__ == "__main__":
     main()  # call the main function when the script is run directly
