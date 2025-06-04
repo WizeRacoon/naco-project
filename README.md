@@ -9,8 +9,9 @@ archive -> full dataset (not uploaded because its 46GB...), available via [Link 
 
 only_PA -> only atelectasis-normal on PA view. This is because the PA view data seems to be better (by eyeballing the data).
 
-- [Link to only-pa (raw) dataset on Kaggle.](https://www.kaggle.com/datasets/lisanneweidmann/only-pa)
-- [Link to only-PA (PSO 5 iterations applied) dataset on Kaggle]( https://www.kaggle.com/datasets/lisanneweidmann/only-pa-pso5)
+- [Link to only-PA (raw) dataset on Kaggle.](https://www.kaggle.com/datasets/lisanneweidmann/only-pa)
+- [Link to only-PA (PSO 5 iterations applied) dataset on Kaggle.](https://www.kaggle.com/datasets/lisanneweidmann/only-pa-pso5)
+- [Link to only-PA (PSO 20 iterations applied) dataset on Kaggle.](https://www.kaggle.com/datasets/lisanneweidmann/only-pa-pso20)
 
 ```
 $ python3 count_occurrences.py 
