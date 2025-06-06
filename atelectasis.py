@@ -4,6 +4,7 @@ import data_processor as dp, PSO as pso, segmentation as seg, differential_funct
 import os
 from multiprocessing import Pool, cpu_count
 import random
+import cv2
 from collections import defaultdict
 
 # Data Filters ==================================================================================
@@ -38,7 +39,7 @@ csv_file_path                       = 'data/input/labels.csv'
 images_directory                    = 'data/input/images'
 
 ### max amount of images-------------
-max_images                          = 100000                                               # for if you only want to run a few images
+max_images                          = 100                                               # for if you only want to run a few images
 
 ### PSO------------------------------
 apply_pso                           = False
@@ -50,10 +51,12 @@ max_iterations                      = 20                                        
 pso_output_directory                = f"{experiment_name}/PSO/images"
 save_iteration_list                 = [1,2,3,4,5,10,20]                                     # list of PSO iterations to be saved as an image
 
+save_pso_overlay                    = True                                                  # for every pso image in save_iteration_list; saves the pso overlay as a cutout onto the original image in the folder of that pso image
+
 
 ### differential function------------
 apply_differential_function         = True
-on_pso_iteration                    = 5                                                    # iteration at which the differential function is applied
+on_pso_iteration                    = 20                                                    # iteration at which the differential function is applied
 
 #image_index                        =
 #pso_image_relative_path            =
@@ -95,6 +98,13 @@ def process_image(image_data_object):
             output_directory=pso_output_directory,
             save_iteration_list=save_iteration_list
         )
+        
+    if save_pso_overlay:
+        for iteration in save_iteration_list:
+            xray_image = cv2.imread(f"{images_directory}/{image_data_object.image_index}", cv2.IMREAD_GRAYSCALE)
+            pso_image = cv2.imread(f"{pso_output_directory}/{image_name}/lung_position_clip/velocity_clip/lung_reconstructed_palette_iter_{iteration}.png", cv2.IMREAD_GRAYSCALE)
+            pso.save_overlay_pso_segments_on_xray(image_name, xray_image, pso_image, pso_output_directory, iteration)
+        
         
     # For if the pso converges earlier and a later iteration does not exist
     for i in range(on_pso_iteration):
