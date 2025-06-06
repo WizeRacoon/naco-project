@@ -21,8 +21,6 @@ view_position                   = ["any"]                                   # li
 #OriginalImagePixelSpacing_x    =                                           # trivial
 #OriginalImagePixelSpacing_y    =                                           # trivial
 
-exclusive_label                 = False                                     # if 'True': set such that patient only has one label in the list 'labels' | if 'False': set such that a patient can have multiple labels specified
-
 #================================================================================================
 
 # Experiment Parameters =========================================================================
@@ -32,39 +30,45 @@ exclusive_label                 = False                                     # if
 experiment_name                     = "Experiment_all_N3_i20"
 
 ### Multiprocessing------------------
-multiprocessing                     = True                                                              # apply multiprocessing?
-core_percentage                     = 75                                                                # percentage of CPU to use when multiprocessing
+use_multiprocessing                 = True
+core_percentage                     = 75                                                    # percentage of CPU to use when multiprocessing
 
 ### Input data location--------------
 csv_file_path                       = 'data/input/labels.csv'
 images_directory                    = 'data/input/images'
 
 ### max amount of images-------------
-max_images                          = 1000000                                                           # for if you only want to run a few images
+max_images                          = 100000                                               # for if you only want to run a few images
 
 ### PSO------------------------------
 apply_pso                           = False
 
-n                                   = 20                                                                # number of palettes (particles)
-N                                   = 3                                                                 # number of colors in each palette
-max_iterations                      = 20                                                                # maximum number of iterations
+n                                   = 20                                                    # number of palettes (particles)
+N                                   = 3                                                     # number of colors in each palette
+max_iterations                      = 20                                                    # maximum number of iterations
 #image_path                         =
 pso_output_directory                = f"{experiment_name}/PSO/images"
-save_iteration_list                 = [1,2,3,4,5,10,20]                                                 # list of PSO iterations to be saved as an image
+save_iteration_list                 = [1,2,3,4,5,10,20]                                     # list of PSO iterations to be saved as an image
 
 
 ### differential function------------
 apply_differential_function         = True
-on_pso_iteration                    = 20                                                                # iteration at which the differential function is applied
+on_pso_iteration                    = 5                                                    # iteration at which the differential function is applied
 
 #image_index                        =
 #pso_image_relative_path            =
-save_symmetry_line                  = True                                                              # save the symmetry line image in differential_output_directory   
-save_intermediate_steps             = True                                                              # save the intermedate segmentation steps also (including symmetry line) in differential_output_directory                         
+save_symmetry_line                  = True                                                  # save the symmetry line image in differential_output_directory   
+save_intermediate_steps             = True                                                  # save the intermedate segmentation steps also (including symmetry line) in differential_output_directory                         
 differential_output_directory       = f"{experiment_name}/differential_function/images"
-enable_differential_optimization    = True                                                              # at the end apply differential optimization to the best combination of symmetry_percentage and proportional_lung_capacity
-number_of_trails                    = 10                                                                # number of times to run the differential optimization (with different random train/test plits)
-max_dataset_size                    = 100                                                               # max amount of images to use for differential optimization
+
+enable_differential_optimization    = True                                                  # at the end apply differential optimization to the best combination of symmetry_percentage and proportional_lung_capacity
+number_of_trails                    = 100                                                   # number of times to run the differential optimization (with different random train/test plits)
+max_dataset_size                    = 100                                                   # max amount of images to use for differential optimization (i.e.; max_dataset_size = 100 means 100 images of "No Findings" get used and 100 images of the comperative dataset get used)
+resolution                          = 100                                                   # resolution of the differential optimization (higher is more accurate but takes longer)
+test_size                           = 0.2                                                   # proportion of the dataset to use for testing (i.e.; test_size = 0.2 means 20% of the dataset is used for testing). The complement is used for training.
+fixed_threshold                     = 100                                                   # Fixing the thershold gives a better comparative analysis of the weights and doesn't limit accuracy. If you want a flexible threshold, set it to None.
+atelectasis_mode                    = 'any_disease'                                         # 'atelectasis_only', 'atelectasis_and_include_others', 'any_disease'.
+
 
 #================================================================================================
 
@@ -123,12 +127,11 @@ def main():
         patient_id,
         patient_age,
         patient_gender,
-        view_position,
-        exclusive_label
+        view_position
     )
     print(f"Created {len(image_data_objects)} image data objects.")
     
-    if multiprocessing:
+    if use_multiprocessing:
         total_cpus = cpu_count()
         num_workers = max(1, int(total_cpus * core_percentage / 100))
         print(f"Using {num_workers}/{total_cpus} CPU cores...")
@@ -141,7 +144,16 @@ def main():
             image_data_objects[i] = process_image(image_data_object)
          
     if enable_differential_optimization:
-        df.differential_optimization(image_data_objects, number_of_trails, max_dataset_size)
+        df.differential_optimization(image_data_objects = image_data_objects,
+                                     number_of_trails = number_of_trails, 
+                                     use_multiprocessing = use_multiprocessing, 
+                                     core_percentage = core_percentage, 
+                                     max_dataset_size = max_dataset_size,
+                                     resolution = resolution,
+                                     test_size = test_size,
+                                     fixed_threshold = fixed_threshold,
+                                     atelectasis_mode= atelectasis_mode
+                                     )
         
 if __name__ == "__main__":
     main()  # call the main function when the script is run directly

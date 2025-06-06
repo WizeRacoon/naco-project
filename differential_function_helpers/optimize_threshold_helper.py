@@ -1,19 +1,48 @@
 import numpy as np
+import random
+import secrets
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
-def optimize_thresholds(result_list, positive_label, resolution=10, test_size=0.2, random_seed=42):
-    # Prepare data
+def run_trial(args):
+    trial, atelectasis_group, no_finding_group, min_len, positive_label, resolution, test_size, fixed_threshold = args
+    seed = secrets.randbelow(2**32)
+    rng = random.Random(seed)
+    print(f"Running trial {trial} with seed {seed}...")
+
+    balanced_atelectasis = rng.sample(atelectasis_group, min_len)
+    balanced_no_finding = rng.sample(no_finding_group, min_len)
+    balanced_result_list = balanced_atelectasis + balanced_no_finding
+    rng.shuffle(balanced_result_list)
+
+    result = optimize_thresholds(
+        balanced_result_list,
+        positive_label=positive_label,
+        resolution=resolution,
+        test_size=test_size,
+        random_seed=seed,
+        fixed_threshold = fixed_threshold
+    )
+
+    return result['train_accuracy'], result['test_accuracy'], result['best_config']
+
+def optimize_thresholds(result_list, positive_label, resolution=100, test_size=0.2, random_seed=42, fixed_threshold=100):
     symmetry, capacity, labels = [], [], []
 
     for item in result_list:
         if item['symmetry_percentage'] is not None and item['proportional_lung_capacity'] is not None:
             symmetry.append(item['symmetry_percentage'])
             capacity.append(item['proportional_lung_capacity'])
-            labels.append(item['label'])
+            
+            if positive_label == 'any_disease':
+                label_is_positive = item['label'] != 'No Finding'
+            else:
+                label_is_positive = item['label'] == positive_label
+
+            labels.append(int(label_is_positive))
 
     X = np.stack([symmetry, capacity], axis=1)
-    y = (np.array(labels) == positive_label).astype(int)
+    y = np.array(labels)
 
     # Split
     X_train, X_test, y_train, y_test = train_test_split(
@@ -23,19 +52,29 @@ def optimize_thresholds(result_list, positive_label, resolution=10, test_size=0.
     best_acc = 0
     best_config = (None, None, None)
 
-    for w1 in np.linspace(0, 1000, resolution):
-        for w2 in np.linspace(0, 1000, resolution):
-            scores = w1 * X_train[:, 0] + w2 * X_train[:, 1]
-            for thresh in np.linspace(scores.min(), scores.max(), resolution):
-                preds = (scores > thresh).astype(int)
-                acc = accuracy_score(y_train, preds)
-                if acc > best_acc:
-                    best_acc = acc
-                    best_config = (w1, w2, thresh)
+    for w_sp in np.linspace(0, 100, resolution):
+        for w_plc in np.linspace(0, 100, resolution):
+            scores_train = w_sp * X_train[:, 0] + w_plc * X_train[:, 1]
+            scores_test = w_sp * X_test[:, 0] + w_plc * X_test[:, 1]
 
-    # Evaluate on test set
-    w1, w2, thresh = best_config
-    test_preds = ((w1 * X_test[:, 0] + w2 * X_test[:, 1]) > thresh).astype(int)
+            if fixed_threshold is not None:
+                preds_train = (scores_train > fixed_threshold).astype(int)
+                preds_test = (scores_test > fixed_threshold).astype(int)
+                acc_train = accuracy_score(y_train, preds_train)
+                acc_test = accuracy_score(y_test, preds_test)
+                if acc_train > best_acc:
+                    best_acc = acc_train
+                    best_config = (w_sp, w_plc, fixed_threshold)
+            else:
+                for thresh in np.linspace(scores_train.min(), scores_train.max(), resolution):
+                    preds_train = (scores_train > thresh).astype(int)
+                    acc_train = accuracy_score(y_train, preds_train)
+                    if acc_train > best_acc:
+                        best_acc = acc_train
+                        best_config = (w_sp, w_plc, thresh)
+
+    w_sp, w_plc, thresh = best_config
+    test_preds = ((w_sp * X_test[:, 0] + w_plc * X_test[:, 1]) > thresh).astype(int)
     test_acc = accuracy_score(y_test, test_preds)
 
     return {

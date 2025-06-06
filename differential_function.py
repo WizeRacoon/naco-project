@@ -2,8 +2,8 @@ import differential_function_helpers.further_segmentation_helper as fsh, differe
 import os
 import cv2
 import numpy as np
-import random
 from collections import defaultdict
+from multiprocessing import Pool, cpu_count
 
 def full_segmentation(image_name, image, save_symmetry_line, save_intermediate_steps, differential_directory):
     # ---------------- Step 1: Cut off bottom 90 pixels ----------------
@@ -81,6 +81,20 @@ def full_segmentation(image_name, image, save_symmetry_line, save_intermediate_s
 
     if save_intermediate_steps or save_symmetry_line:
         cv2.imwrite(os.path.join(differential_directory, f'{image_name}_step8_symmetry_line.png'), symmetry_line)
+        
+    # ---------------- Optional Step 9: Overlay Lung Contours on Original Cut Image ----------------
+    # Convert the original cut grayscale image to BGR
+    image_cut_bgr = cv2.cvtColor(image_cut, cv2.COLOR_GRAY2BGR)
+
+    # Recalculate contours from the binary segmentation result
+    contours_result, _ = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Draw the contours on the color image in green
+    overlay = image_cut_bgr.copy()
+    cv2.drawContours(overlay, contours_result, -1, (0, 255, 0), 2)  # Green with thickness 2
+
+    if save_intermediate_steps:
+        cv2.imwrite(os.path.join(differential_directory, f'{image_name}_step9_overlay_on_original.png'), overlay)
 
     return symmetry_x, result
     
@@ -101,49 +115,89 @@ def calc_lung_symmetry(symmetry_x, segmented_image):
    
     return symmetry_percentage, proportional_lung_capacity
     
-def differential_optimization(image_data_objects, number_of_trails, max_dataset_size = 1000000000, resolution=30, test_size=0.2):
-    # Group data by label
-    label_groups = defaultdict(list)
-    for obj in image_data_objects:
-        label = obj.labels[0]
-        label_groups[label].append({
-            'image_index': obj.image_index,
-            'symmetry_percentage': obj.symmetry_percentage,
-            'proportional_lung_capacity': obj.proportional_lung_capacity,
-            'label': label
-        })
+def differential_optimization(image_data_objects, number_of_trails, use_multiprocessing, core_percentage, max_dataset_size=1000000000,
+                              resolution=100, test_size=0.2, fixed_threshold=100, atelectasis_mode='atelectasis_and_include_others'):
+    # Group data by labels
+    atelectasis_group = []
+    no_finding_group = []
+    
+    if atelectasis_mode == 'any_disease':
+        positive_label = 'any_disease'
+    else:
+        positive_label = 'Atelectasis'
+        
 
-    atelectasis_group = label_groups.get('Atelectasis', [])
-    no_finding_group = label_groups.get('No Finding', [])
+    for obj in image_data_objects:
+        labels = obj.labels
+
+        if atelectasis_mode == 'atelectasis_only':
+            # Only 'Atelectasis', no other diseases
+            if labels == ['Atelectasis']:
+                atelectasis_group.append({
+                    'image_index': obj.image_index,
+                    'symmetry_percentage': obj.symmetry_percentage,
+                    'proportional_lung_capacity': obj.proportional_lung_capacity,
+                    'label': 'Atelectasis'
+                })
+
+        elif atelectasis_mode == 'atelectasis_and_include_others':
+            # Atelectasis present, maybe with other diseases
+            if 'Atelectasis' in labels:
+                atelectasis_group.append({
+                    'image_index': obj.image_index,
+                    'symmetry_percentage': obj.symmetry_percentage,
+                    'proportional_lung_capacity': obj.proportional_lung_capacity,
+                    'label': 'Atelectasis'
+                })
+
+        elif atelectasis_mode == 'any_disease':
+            # Any disease, no 'No Finding'
+            if 'No Finding' not in labels:
+                atelectasis_group.append({
+                    'image_index': obj.image_index,
+                    'symmetry_percentage': obj.symmetry_percentage,
+                    'proportional_lung_capacity': obj.proportional_lung_capacity,
+                    'label': 'Disease'
+                })
+
+        # Still track No Finding group
+        if labels == ['No Finding']:
+            no_finding_group.append({
+                'image_index': obj.image_index,
+                'symmetry_percentage': obj.symmetry_percentage,
+                'proportional_lung_capacity': obj.proportional_lung_capacity,
+                'label': 'No Finding'
+            })
+
+    # Balance datasets
     min_len = min(min(len(atelectasis_group), len(no_finding_group)), max_dataset_size)
 
-    train_accuracies = []
-    test_accuracies = []
-    best_configs = []
+    print(f"Balanced dataset per trial: {min_len} '{atelectasis_mode}' vs {min_len} 'No Finding'")
 
-    for trial in range(number_of_trails):
-        seed = 42 + trial
-        rng = random.Random(seed)
+    args_list = [
+        (i, atelectasis_group, no_finding_group, min_len, positive_label, resolution, test_size, fixed_threshold)
+        for i in range(number_of_trails)
+    ]
 
-        balanced_atelectasis = rng.sample(atelectasis_group, min_len)
-        balanced_no_finding = rng.sample(no_finding_group, min_len)
-        balanced_result_list = balanced_atelectasis + balanced_no_finding
-        rng.shuffle(balanced_result_list)
+    if use_multiprocessing:
+        total_cpus = cpu_count()
+        num_workers = max(1, int(total_cpus * core_percentage / 100))
+        print(f"Using {num_workers}/{total_cpus} CPU cores...")
 
-        result = oth.optimize_thresholds(
-            balanced_result_list,
-            positive_label='Atelectasis',
-            resolution=resolution,
-            test_size=test_size,
-            random_seed=seed
-        )
+        with Pool(processes=num_workers) as pool:
+            results = pool.map(oth.run_trial, args_list)
+    else:
+        results = list(map(oth.run_trial, args_list))
 
-        train_accuracies.append(result['train_accuracy'])
-        test_accuracies.append(result['test_accuracy'])
-        best_configs.append(result['best_config'])
+    train_accuracies, test_accuracies, best_configs = zip(*results)
 
-    print(f"Balanced dataset per trial: {min_len} 'Atelectasis' and {min_len} 'No Finding'")
-    print(f"train_acc_mean: {np.mean(train_accuracies)}, train_acc_std: {np.std(train_accuracies)}")
-    print(f"test_acc_mean: {np.mean(test_accuracies)}, test_acc_std: {np.std(test_accuracies)}")
-    for i, (w1, w2, thresh) in enumerate(best_configs):
-        print(f"Trial {i+1}: w1={w1}, w2={w2}, threshold={thresh}")
+    print(f"train_acc_mean: {(np.mean(train_accuracies)*100):.4f}%, train_acc_std: {(np.std(train_accuracies)*100):.4f}%")
+    print(f"test_acc_mean: {(np.mean(test_accuracies)*100):.4f}%, test_acc_std: {(np.std(test_accuracies)*100):.4f}%")
+
+    w_sp, w_plc, thresholds = zip(*best_configs)
+    print(f"w_sp mean: {np.mean(w_sp):.4f}, w_sp std: {np.std(w_sp):.4f}")
+    print(f"w_plc mean: {np.mean(w_plc):.4f}, w_plc std: {np.std(w_plc):.4f}")
+    print(f"threshold mean: {np.mean(thresholds):.4f}, threshold std: {np.std(thresholds):.4f}")
+
+    for i, (w_sp, w_plc, thresh) in enumerate(best_configs):
+        print(f"Trial {i+1}: w1={w_sp:.4f}, w2={w_plc:.4f}, threshold={thresh:.4f}")

@@ -88,9 +88,7 @@ def pass_filter(image_index,
                 filter_patient_id,
                 filter_patient_age,
                 filter_patient_gender,
-                filter_view_position,
-                
-                exclusive_label):   
+                filter_view_position):   
     if ((filter_image_index[0]        != "any" and image_index        not in filter_image_index     ) or
         (filter_follow_up_number[0]   != "any" and follow_up_number   not in filter_follow_up_number) or
         (filter_patient_id[0]         != "any" and patient_id         not in filter_patient_id      ) or
@@ -99,17 +97,11 @@ def pass_filter(image_index,
         (filter_view_position[0]      != "any" and view_position      not in filter_view_position   )):
         return False
     
-    if exclusive_label:
-        if len(labels) > 1:
+    for label in labels:
+        if label not in filter_labels:
             return False
-        if len(labels) == 1:
-            if labels[0] in filter_labels:
-                return True
-    else:
-        for label in labels:
-            if label in filter_labels:
-                return True
-    return False
+    
+    return True
 
 def create_image_objects(csv_path, 
                          image_folder,
@@ -121,9 +113,7 @@ def create_image_objects(csv_path,
                          filter_patient_id,
                          filter_patient_age,
                          filter_patient_gender,
-                         filter_view_position,
-                         
-                         exclusive_label = False):
+                         filter_view_position):
     """
     Reads the CSV file and creates ImageData objects, attempting to associate
     them with image files in the specified folder.
@@ -192,8 +182,7 @@ def create_image_objects(csv_path,
                         filter_patient_id,
                         filter_patient_age,
                         filter_patient_gender,
-                        filter_view_position,
-                        exclusive_label):
+                        filter_view_position):
                 image_data_object = ImageData(
                     image_index=image_index,
                     labels=labels,
