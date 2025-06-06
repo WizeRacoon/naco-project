@@ -27,7 +27,7 @@ view_position                   = ["any"]                                   # li
 # Here, you can adjust what experiment you want to run and where to put it
 
 ### Experiment name------------------
-experiment_name                     = "Experiment_all_N3_i20"
+experiment_name                     = "newPSO"
 
 ### Multiprocessing------------------
 use_multiprocessing                 = True
@@ -38,10 +38,10 @@ csv_file_path                       = 'data/input/labels.csv'
 images_directory                    = 'data/input/images'
 
 ### max amount of images-------------
-max_images                          = 100000                                               # for if you only want to run a few images
+max_images                          = 100                                                   # for if you only want to run a few images
 
 ### PSO------------------------------
-apply_pso                           = False
+apply_pso                           = True
 
 n                                   = 20                                                    # number of palettes (particles)
 N                                   = 3                                                     # number of colors in each palette
@@ -53,7 +53,7 @@ save_iteration_list                 = [1,2,3,4,5,10,20]                         
 
 ### differential function------------
 apply_differential_function         = True
-on_pso_iteration                    = 5                                                    # iteration at which the differential function is applied
+on_pso_iteration                    = 20                                                    # iteration at which the differential function is applied
 
 #image_index                        =
 #pso_image_relative_path            =
@@ -67,7 +67,7 @@ max_dataset_size                    = 100                                       
 resolution                          = 100                                                   # resolution of the differential optimization (higher is more accurate but takes longer)
 test_size                           = 0.2                                                   # proportion of the dataset to use for testing (i.e.; test_size = 0.2 means 20% of the dataset is used for testing). The complement is used for training.
 fixed_threshold                     = 100                                                   # Fixing the thershold gives a better comparative analysis of the weights and doesn't limit accuracy. If you want a flexible threshold, set it to None.
-atelectasis_mode                    = 'any_disease'                                         # 'atelectasis_only', 'atelectasis_and_include_others', 'any_disease'.
+atelectasis_mode                    = 'any_disease'                      # 'atelectasis_only', 'atelectasis_and_include_others', 'any_disease'.
 
 
 #================================================================================================
