@@ -170,7 +170,7 @@ def differential_optimization(image_data_objects, number_of_trails, use_multipro
             })
 
     # Balance datasets
-    min_len = min(min(len(atelectasis_group), len(no_finding_group)), max_dataset_size)
+    min_len = min(min(len(atelectasis_group), len(no_finding_group)), max_dataset_size/2)
 
     print(f"Balanced dataset per trial: {min_len} '{atelectasis_mode}' vs {min_len} 'No Finding'")
 

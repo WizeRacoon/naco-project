@@ -39,7 +39,7 @@ csv_file_path                       = 'data/input/labels.csv'
 images_directory                    = 'data/input/images'
 
 ### max amount of images-------------
-max_images                          = 100                                               # for if you only want to run a few images
+max_images                          = 1000000                                               # for if you only want to run a few images
 
 ### PSO------------------------------
 apply_pso                           = False
@@ -51,7 +51,7 @@ max_iterations                      = 20                                        
 pso_output_directory                = f"{experiment_name}/PSO/images"
 save_iteration_list                 = [1,2,3,4,5,10,20]                                     # list of PSO iterations to be saved as an image
 
-save_pso_overlay                    = True                                                  # for every pso image in save_iteration_list; saves the pso overlay as a cutout onto the original image in the folder of that pso image
+save_pso_overlay                    = False                                                 # for every pso image in save_iteration_list; saves the pso overlay as a cutout onto the original image in the folder of that pso image
 
 
 ### differential function------------
@@ -66,11 +66,11 @@ differential_output_directory       = f"{experiment_name}/differential_function/
 
 enable_differential_optimization    = True                                                  # at the end apply differential optimization to the best combination of symmetry_percentage and proportional_lung_capacity
 number_of_trails                    = 100                                                   # number of times to run the differential optimization (with different random train/test plits)
-max_dataset_size                    = 100                                                   # max amount of images to use for differential optimization (i.e.; max_dataset_size = 100 means 100 images of "No Findings" get used and 100 images of the comperative dataset get used)
+max_dataset_size                    = 200                                                   # max amount of images to use for differential optimization (i.e.; max_dataset_size = 100 means 100 images of "No Findings" get used and 100 images of the comperative dataset get used)
 resolution                          = 100                                                   # resolution of the differential optimization (higher is more accurate but takes longer)
 test_size                           = 0.2                                                   # proportion of the dataset to use for testing (i.e.; test_size = 0.2 means 20% of the dataset is used for testing). The complement is used for training.
 fixed_threshold                     = 100                                                   # Fixing the thershold gives a better comparative analysis of the weights and doesn't limit accuracy. If you want a flexible threshold, set it to None.
-atelectasis_mode                    = 'any_disease'                                         # 'atelectasis_only', 'atelectasis_and_include_others', 'any_disease'.
+atelectasis_mode                    = 'atelectasis_and_include_others'                      # 'atelectasis_only', 'atelectasis_and_include_others', 'any_disease'.
 
 
 #================================================================================================
@@ -99,18 +99,18 @@ def process_image(image_data_object):
             save_iteration_list=save_iteration_list
         )
         
-    if save_pso_overlay:
-        for iteration in save_iteration_list:
-            xray_image = cv2.imread(f"{images_directory}/{image_data_object.image_index}", cv2.IMREAD_GRAYSCALE)
-            pso_image = cv2.imread(f"{pso_output_directory}/{image_name}/lung_position_clip/velocity_clip/lung_reconstructed_palette_iter_{iteration}.png", cv2.IMREAD_GRAYSCALE)
-            pso.save_overlay_pso_segments_on_xray(image_name, xray_image, pso_image, pso_output_directory, iteration)
-        
-        
-    # For if the pso converges earlier and a later iteration does not exist
+    # Preventing an error for if the pso converges earlier then on_pso_iteration amount of iterations, and a later iteration does not exist
     for i in range(on_pso_iteration):
         if os.path.isfile(f"{pso_output_directory}/{image_name}/lung_position_clip/velocity_clip/lung_reconstructed_palette_iter_{on_pso_iteration - i}.png"):
             pso_iteration = on_pso_iteration - i
         i += 1
+        
+    if save_pso_overlay:
+        for iteration in save_iteration_list:
+            if iteration <= pso_iteration:
+                xray_image = cv2.imread(f"{images_directory}/{image_data_object.image_index}", cv2.IMREAD_GRAYSCALE)
+                pso_image = cv2.imread(f"{pso_output_directory}/{image_name}/lung_position_clip/velocity_clip/lung_reconstructed_palette_iter_{iteration}.png", cv2.IMREAD_GRAYSCALE)
+                pso.save_overlay_pso_segments_on_xray(image_name, xray_image, pso_image, pso_output_directory, iteration)
 
     if apply_differential_function:
         print(f"[{image_name}] - applying differential function")
