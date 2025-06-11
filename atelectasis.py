@@ -70,7 +70,7 @@ max_dataset_size                    = 200                                       
 resolution                          = 100                                                   # resolution of the differential optimization (higher is more accurate but takes longer)
 test_size                           = 0.2                                                   # proportion of the dataset to use for testing (i.e.; test_size = 0.2 means 20% of the dataset is used for testing). The complement is used for training.
 fixed_threshold                     = 100                                                   # Fixing the thershold gives a better comparative analysis of the weights and doesn't limit accuracy. If you want a flexible threshold, set it to None.
-atelectasis_mode                    = 'atelectasis_and_include_others'                      # 'atelectasis_only', 'atelectasis_and_include_others', 'any_disease'.
+atelectasis_mode                    = 'atelectasis_only'                                    # 'atelectasis_only', 'atelectasis_and_include_others', 'any_disease'.
 
 
 #================================================================================================

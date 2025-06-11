@@ -1,7 +1,7 @@
 import numpy as np
 import random
 import secrets
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.model_selection import train_test_split
 
 def run_trial(args):
@@ -24,7 +24,15 @@ def run_trial(args):
         fixed_threshold = fixed_threshold
     )
 
-    return result['train_accuracy'], result['test_accuracy'], result['best_config']
+    return (
+        result['train_accuracy'],
+        result['test_accuracy'],
+        result['best_config'],
+        result['tp'],
+        result['tn'],
+        result['fp'],
+        result['fn']
+    )
 
 def optimize_thresholds(result_list, positive_label, resolution=100, test_size=0.2, random_seed=42, fixed_threshold=100):
     symmetry, capacity, labels = [], [], []
@@ -77,8 +85,15 @@ def optimize_thresholds(result_list, positive_label, resolution=100, test_size=0
     test_preds = ((w_sp * X_test[:, 0] + w_plc * X_test[:, 1]) > thresh).astype(int)
     test_acc = accuracy_score(y_test, test_preds)
 
+    # Compute TP, TN, FP, FN
+    tn, fp, fn, tp = confusion_matrix(y_test, test_preds).ravel()
+
     return {
         'train_accuracy': best_acc,
         'test_accuracy': test_acc,
-        'best_config': best_config
+        'best_config': best_config,
+        'tp': tp,
+        'tn': tn,
+        'fp': fp,
+        'fn': fn
     }

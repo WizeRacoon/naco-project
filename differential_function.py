@@ -189,15 +189,20 @@ def differential_optimization(image_data_objects, number_of_trails, use_multipro
     else:
         results = list(map(oth.run_trial, args_list))
 
-    train_accuracies, test_accuracies, best_configs = zip(*results)
+    train_accuracies, test_accuracies, best_configs, tps, tns, fps, fns = zip(*results)
+    
+    for i, (w_sp, w_plc, thresh) in enumerate(best_configs):
+        print(f"Trial {i+1}: w1={w_sp:.4g}, w2={w_plc:.4g}, threshold={thresh:.4g}")
 
-    print(f"train_acc_mean: {(np.mean(train_accuracies)*100):.4f}%, train_acc_std: {(np.std(train_accuracies)*100):.4f}%")
-    print(f"test_acc_mean: {(np.mean(test_accuracies)*100):.4f}%, test_acc_std: {(np.std(test_accuracies)*100):.4f}%")
+    print(f"train_acc_mean: {np.mean(train_accuracies):.4g}, train_acc_std: {np.std(train_accuracies):.4g}")
+    print(f"test_acc_mean: {np.mean(test_accuracies):.4g}, test_acc_std: {np.std(test_accuracies):.4g}")
+
+    print(f"TP mean: {np.mean(tps):.4g}, std: {np.std(tps):.4g}")
+    print(f"TN mean: {np.mean(tns):.4g}, std: {np.std(tns):.4g}")
+    print(f"FP mean: {np.mean(fps):.4g}, std: {np.std(fps):.4g}")
+    print(f"FN mean: {np.mean(fns):.4g}, std: {np.std(fns):.4g}")
 
     w_sp, w_plc, thresholds = zip(*best_configs)
-    print(f"w_sp mean: {np.mean(w_sp):.4f}, w_sp std: {np.std(w_sp):.4f}")
-    print(f"w_plc mean: {np.mean(w_plc):.4f}, w_plc std: {np.std(w_plc):.4f}")
-    print(f"threshold mean: {np.mean(thresholds):.4f}, threshold std: {np.std(thresholds):.4f}")
-
-    for i, (w_sp, w_plc, thresh) in enumerate(best_configs):
-        print(f"Trial {i+1}: w1={w_sp:.4f}, w2={w_plc:.4f}, threshold={thresh:.4f}")
+    print(f"w_sp mean: {np.mean(w_sp):.4g}, w_sp std: {np.std(w_sp):.4g}")
+    print(f"w_plc mean: {np.mean(w_plc):.4g}, w_plc std: {np.std(w_plc):.4g}")
+    print(f"threshold mean: {np.mean(thresholds):.4g}, threshold std: {np.std(thresholds):.4g}")
