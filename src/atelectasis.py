@@ -32,7 +32,7 @@ experiment_name                     = "Test-experiment"
 
 ### Multiprocessing------------------
 use_multiprocessing                 = True
-core_percentage                     = 70                                                    # percentage of CPU to use when multiprocessing
+core_percentage                     = 75                                                    # percentage of CPU to use when multiprocessing
 
 ### Input data location--------------
 csv_file_path                       = 'data/filtered_csv_toy-samples.csv'
@@ -46,17 +46,17 @@ apply_pso                           = True
 
 n                                   = 20                                                    # number of palettes (particles)
 N                                   = 3                                                     # number of colors in each palette
-max_iterations                      = 5                                                    # maximum number of iterations
+max_iterations                      = 5                                                     # maximum number of iterations
 #image_path                         =
 pso_output_directory                = f"{experiment_name}/PSO/images"
-save_iteration_list                 = [1,5]                                     # list of PSO iterations to be saved as an image
+save_iteration_list                 = [1,5]                                                 # list of PSO iterations to be saved as an image
 
 save_pso_overlay                    = False                                                 # for every pso image in save_iteration_list; saves the pso overlay as a cutout onto the original image in the folder of that pso image
 
 
 ### differential function------------
 apply_differential_function         = True
-on_pso_iteration                    = 5                                                    # iteration at which the differential function is applied
+on_pso_iteration                    = 5                                                     # iteration at which the differential function is applied
 
 #image_index                        =
 #pso_image_relative_path            =
@@ -65,8 +65,8 @@ save_intermediate_steps             = True                                      
 differential_output_directory       = f"{experiment_name}/differential_function/images"
 
 enable_differential_optimization    = True                                                  # at the end apply differential optimization to the best combination of symmetry_percentage and proportional_lung_capacity
-number_of_trails                    = 10                                                   # number of times to run the differential optimization (with different random train/test splits)
-max_dataset_size                    = 5                                                   # max amount of images to use for differential optimization (i.e.; max_dataset_size = 100 means 100 images of "No Findings" get used and 100 images of the comperative dataset get used)
+number_of_trails                    = 10                                                    # number of times to run the differential optimization (with different random train/test splits)
+max_dataset_size                    = 5                                                     # max amount of images to use for differential optimization (i.e.; max_dataset_size = 100 means 100 images of "No Findings" get used and 100 images of the comperative dataset get used)
 resolution                          = 100                                                   # resolution of the differential optimization (higher is more accurate but takes longer)
 test_size                           = 0.2                                                   # proportion of the dataset to use for testing (i.e.; test_size = 0.2 means 20% of the dataset is used for testing). The complement is used for training.
 fixed_threshold                     = 100                                                   # Fixing the thershold gives a better comparative analysis of the weights and doesn't limit accuracy. If you want a flexible threshold, set it to None.
@@ -143,7 +143,7 @@ def main():
     
     if use_multiprocessing:
         total_cpus = cpu_count()
-        num_workers = max(1, int(total_cpus * core_percentage / 400))
+        num_workers = max(1, int(total_cpus * core_percentage / 100))
         print(f"Using {num_workers}/{total_cpus} CPU cores...")
 
         with Pool(processes=num_workers) as pool:

@@ -150,7 +150,7 @@ def PSO(n, N, image_path, max_iterations, output_directory, save_iteration_list,
     velocities = np.zeros((n, N))
     np.random.seed(12)
 
-    valley_intensities = histogram_valley_peaks(grey_values_original, smoothing_kernel=7, log_transform=True, show_plot=True)
+    valley_intensities = histogram_valley_peaks(grey_values_original, smoothing_kernel=7, log_transform=True, show_plot=False)
     if len(valley_intensities) >= N:
         palette_base = np.random.choice(valley_intensities, size=(n, N), replace=True)
     else:
