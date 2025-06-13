@@ -143,10 +143,10 @@ def create_image_objects(csv_path,
             patient_age = row['Patient Age']
             patient_gender = row['Patient Gender']
             view_position = row['View Position']
-            original_image_width = row['OriginalImageWidth']
-            original_image_height = row['OriginalImageHeight']
-            original_image_pixel_spacing_x = row['OriginalImagePixelSpacing_x']
-            original_image_pixel_spacing_y = row['OriginalImagePixelSpacing_y']
+            original_image_width = row['OriginalImage[Width']
+            original_image_height = row['Height]']
+            original_image_pixel_spacing_x = row['OriginalImagePixelSpacing[x']
+            original_image_pixel_spacing_y = row['y]']
 
             # Try to find the corresponding image file
             image_file = None
@@ -160,7 +160,9 @@ def create_image_objects(csv_path,
             if image_file:
                 image_path = os.path.join(image_folder, image_file)
                 try:
-                    image_object = Image.open(image_path)
+                    # Use 'with ... as img' to save RAM
+                    with Image.open(image_path) as img:
+                        image_object = img.copy() # Fully load the image into memory
                 except FileNotFoundError:
                     print(f"Warning: Image file not found at {image_path}")
                 except Exception as e:

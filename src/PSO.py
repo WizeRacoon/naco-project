@@ -1,16 +1,19 @@
 import os
 import numpy as np
 from scipy.spatial.distance import cdist
+from sklearn.metrics.pairwise import manhattan_distances
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib
 import cv2
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-OUTPUT_DIR_RESULTS = "data/PSO/images"
 # bounding options
 BOUND_VELOCITY = "clip"  # "clip", "reflection", None
 BOUND_POSITION = "clip"  # "clip", "reflection"
+
+DISTANCE_METRIC = "L2" # Euclidean
+# DISTANCE_METRIC = "L1" # Manhattan
 
 def load_iamge(image_path):
     image_original = Image.open(image_path).convert("L")
@@ -19,7 +22,12 @@ def load_iamge(image_path):
     return grey_values_original, width, height
 
 def evaluate_palette_fitness(palette, grey_values_original):
-    distances = cdist(grey_values_original[:, None], palette[:, None], metric='sqeuclidean')
+    if DISTANCE_METRIC == "L2":
+        distances = cdist(grey_values_original[:, None], palette[:, None], metric='sqeuclidean')
+    elif DISTANCE_METRIC == "L1":
+        distances = manhattan_distances(grey_values_original[:, None], palette[:, None])
+    else:
+        raise ValueError("Unsupported distance metric. Use 'L2' for Euclidean or 'L1' for Manhattan.")
     min_distances = np.min(distances, axis=1)
     return np.sum(min_distances)
 
@@ -69,7 +77,12 @@ def histogram_valley_peaks(grey_values, smoothing_kernel=5, log_transform=True, 
     return valley_intensities.astype(int)
 
 def cluster_recreate_image_with_palette(grey_values_original, palette, width, height, iteration, img_name, output_directory):
-    distances = cdist(grey_values_original[:, None], palette[:, None], metric='sqeuclidean')
+    if DISTANCE_METRIC == "L2":
+        distances = cdist(grey_values_original[:, None], palette[:, None], metric='sqeuclidean')
+    elif DISTANCE_METRIC == "L1":
+        distances = manhattan_distances(grey_values_original[:, None], palette[:, None])
+    else:
+        raise ValueError("Unsupported distance metric. Use 'L2' for Euclidean or 'L1' for Manhattan.")
     closest_palette_indices = np.argmin(distances, axis=1)
     clustered_image = palette[closest_palette_indices].astype(np.uint8)
     clustered_array = clustered_image.reshape((height, width))
@@ -98,15 +111,16 @@ def cluster_recreate_image_with_palette(grey_values_original, palette, width, he
     combined_img.paste(palette_img, (0, height + spacing))
 
     draw = ImageDraw.Draw(combined_img)
-    font = ImageFont.truetype("arial.ttf", 8)
+    # font = ImageFont.truetype("arial.ttf", 8) # you can set the font type if desired (not needed)
     text_y = height + spacing + palette_height + 5
 
     for i, intensity in enumerate(palette):
         start_x = i * segment_width + segment_width // 2
         label = f"R:{int(intensity)}"
-        draw.text((start_x-10, text_y), label, fill="black", align="center", font=font)
+        draw.text((start_x-10, text_y), label, fill="black", align="center")
+        # draw.text((start_x-10, text_y), label, fill="black", align="center", font=font) # setting font type if desired (not needed)
 
-    img_name = img_name.split("/")[3]
+    img_name = os.path.basename(img_name)
     save_dir = f"{output_directory}/{img_name}/lung_position_{BOUND_POSITION}/velocity_{BOUND_VELOCITY}"
     save_path = f"{save_dir}/lung_reconstructed_palette_iter_{iteration}.png"
 
