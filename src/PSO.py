@@ -134,7 +134,16 @@ def cluster_recreate_image_with_palette(grey_values_original, palette, width, he
     combined_img.save(save_path, "PNG")
     return combined_img
 
-def PSO(n, N, image_path, max_iterations, output_directory, save_iteration_list):
+
+from genetic_clustering import genetic_clustering
+
+def PSO(n, N, image_path, max_iterations, output_directory, save_iteration_list, apply_ga=True):
+    """
+    Particle Swarm Optimization for RGB palette extraction.
+    n = number of palettes (particles)
+    N = number of colors in each palette
+    apply_ga = whether to apply genetic clustering after PSO
+    """
     grey_values_original, width, height = load_iamge(image_path)
     img_name = image_path.split(".")[0]
 
@@ -159,6 +168,8 @@ def PSO(n, N, image_path, max_iterations, output_directory, save_iteration_list)
     color_threshold = 1.0
     max_iter_stop = 0
     prev_palette = global_best.copy()
+
+    all_global_bests = []  # Store global best palettes for GA
 
     for iteration in range(1, max_iterations + 1):
         for i in range(n):
@@ -198,6 +209,20 @@ def PSO(n, N, image_path, max_iterations, output_directory, save_iteration_list)
             print(f"Iteration {iteration} Global Best Palette: {global_best.astype(int)} - SAVED")
         else:
             print(f"Iteration {iteration} Global Best Palette: {global_best.astype(int)}")
+
+        all_global_bests.append(global_best)
+
+    # Apply Genetic Clustering if enabled
+    if apply_ga:
+        print("Starting genetic clustering")
+        unique_global_bests = np.unique(np.array(all_global_bests), axis=0)
+        ga_palette = genetic_clustering(grey_values_original, initial_population=unique_global_bests, num_clusters=N)
+        print(f"GA palette: {ga_palette}")
+        ga_palette = np.clip(np.round(ga_palette), 0, 255).astype(np.uint8)
+        print(f"Rounded GA palette: {ga_palette}")
+
+        # Visualize and save the final result
+        cluster_recreate_image_with_palette(grey_values_original, ga_palette, width, height, iteration="palette_GA", img_name=f"{img_name}_GA", output_directory=output_directory)
 
     return local_best, global_best
 
