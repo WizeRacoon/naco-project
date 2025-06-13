@@ -5,8 +5,15 @@ from sklearn.metrics.pairwise import manhattan_distances
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib
 import cv2
-matplotlib.use('TkAgg')
+
+if os.environ.get('DISPLAY', '') == '':
+    print('No display found. Using non-interactive Agg backend.')
+    matplotlib.use('Agg')
+else:
+    matplotlib.use('TkAgg')  # or another GUI backend if needed
+
 import matplotlib.pyplot as plt
+
 
 # bounding options
 BOUND_VELOCITY = "clip"  # "clip", "reflection", None
