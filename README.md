@@ -1,6 +1,6 @@
 # naco-project
-Title: Particle Swarm Optimization (PSO) for Atelectasis Detection in X-ray Images. 
-Authors: Andreea Gabrian, Mika Sipman, and Lisanne Weidmann.
+Title: Particle Swarm Optimization (PSO) for Atelectasis Detection in X-ray Images.\\ 
+Authors: Andreea Gabrian, Mika Sipman, and Lisanne Weidmann.\\
 Supervisors: Lucia Cavallaro and Inge Wortel
 
 ## Source code
