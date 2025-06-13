@@ -2,8 +2,8 @@ import os
 
 def main():
     # File paths
-    raw_directory = './only_PA-and-A'  # Source directory with the desired structure
-    images_root_directory = './results_ONLY-PA-ATELECTASIS/all_files'  # Root directory containing images in subfolders
+    reference_directory = './only_PA-and-A'  # Baseline directory with the desired structure
+    source_directory = './results_ONLY-PA-ATELECTASIS/all_files'  # Root directory containing processed images in subfolders
     target_directory = './results_ONLY-PA-ATELECTASIS_pso5'  # Target directory to replicate structure
 
     # Recursively find all image files in the subdirectories
@@ -36,11 +36,11 @@ def main():
                     print(f"Warning: File '{file}' not found in all_pso_images.")
 
     # Find all images in all_pso_images
-    all_image_paths = find_all_images(images_root_directory)
+    all_image_paths = find_all_images(source_directory)
 
     # Replicate the structure and copy files
-    replicate_structure(raw_directory, all_image_paths, target_directory)
+    replicate_structure(reference_directory, all_image_paths, target_directory)
 
-    print(f"Files copied to '{target_directory}' maintaining the structure of '{raw_directory}'.")
+    print(f"Files copied to '{target_directory}' maintaining the structure of '{reference_directory}'.")
 
 main()
