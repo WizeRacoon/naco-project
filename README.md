@@ -1,5 +1,7 @@
 # naco-project
-Particle Swarm Optimization (PSO) for Atelectasis Detection in X-ray Images.
+Title: Particle Swarm Optimization (PSO) for Atelectasis Detection in X-ray Images. 
+Authors: Andreea Gabrian, Mika Sipman, and Lisanne Weidmann.
+Supervisors: Lucia Cavallaro and Inge Wortel
 
 ## Source code
 The source code can be found in the `src` folder. It contains the following files:
