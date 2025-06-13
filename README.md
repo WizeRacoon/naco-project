@@ -47,6 +47,8 @@ If the link above does not work, you can find the demonstration video in this re
 - Sample dataset (5% of the full dataset): [Link to sample dataset on Kaggle](https://www.kaggle.com/datasets/nih-chest-xrays/sample)
 - Full dataset (46GB): [Link to full dataset on Kaggle](https://www.kaggle.com/datasets/nih-chest-xrays/data)
 
+All balanced datasets can be found on Kaggle (see below). The PSO iterated image datasets can also be accessed through [Google Drive](https://drive.google.com/drive/folders/1jwt3imVoDML2k_qO91k1oCQ5Nv7b0EbH?usp=sharing)
+
 **--- DATASET A ---**
 
 Only 'atelectasis' (and other diseases) - 'no findings' on PA view.
