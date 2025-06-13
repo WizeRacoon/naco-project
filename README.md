@@ -15,10 +15,9 @@ The source code can be found in the `src` folder. It contains the following file
 ### Running the program
 Specify the experiment_name, the csv_file_path, and the images_directory. Then run `atelectasis.py`. We recommend to turn on multiprocessing to speed up execution.
 
-<video width="640" height="360" controls>
-  <source src="./demonstration_naco.mp4" type="video/mp4">
-  Your browser does not support the video tag. The demonstration video can be found on this Github as 'demonstration-naco.mp4'.
-</video>
+[Watch the demonstration video](./demonstration_naco.mp4)
+
+If the link above does not work, you can find the demonstration video in this repository as `demonstration_naco.mp4`.
 
 #### Parameters
 `atelectasis.py` contains a list of parameters you can tweak to define the experiment that you would like to run. Most of the parameters can be left as they are. 
