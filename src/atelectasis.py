@@ -65,7 +65,7 @@ save_intermediate_steps             = True                                      
 differential_output_directory       = f"{experiment_name}/differential_function/images"
 
 enable_differential_optimization    = True                                                  # at the end apply differential optimization to the best combination of symmetry_percentage and proportional_lung_capacity
-number_of_trails                    = 100                                                   # number of times to run the differential optimization (with different random train/test plits)
+number_of_trails                    = 100                                                   # number of times to run the differential optimization (with different random train/test splits)
 max_dataset_size                    = 200                                                   # max amount of images to use for differential optimization (i.e.; max_dataset_size = 100 means 100 images of "No Findings" get used and 100 images of the comperative dataset get used)
 resolution                          = 100                                                   # resolution of the differential optimization (higher is more accurate but takes longer)
 test_size                           = 0.2                                                   # proportion of the dataset to use for testing (i.e.; test_size = 0.2 means 20% of the dataset is used for testing). The complement is used for training.
