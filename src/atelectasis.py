@@ -1,6 +1,6 @@
 # This is the main file of the project
 
-import data_processor as dp, PSO as pso, segmentation as seg, differential_function as df
+import data_processor as dp, PSO as pso, differential_function as df
 import os
 from multiprocessing import Pool, cpu_count
 import random
@@ -28,15 +28,15 @@ view_position                   = ["any"]                                   # li
 # Here, you can adjust what experiment you want to run and where to put it
 
 ### Experiment name------------------
-experiment_name                     = "Experiment_all_N3_i20"
+experiment_name                     = "Test-experiment"
 
 ### Multiprocessing------------------
 use_multiprocessing                 = True
-core_percentage                     = 75                                                    # percentage of CPU to use when multiprocessing
+core_percentage                     = 70                                                    # percentage of CPU to use when multiprocessing
 
 ### Input data location--------------
-csv_file_path                       = 'data/input/labels.csv'
-images_directory                    = 'data/input/images'
+csv_file_path                       = 'data/filtered_csv_toy-samples.csv'
+images_directory                    = 'data/toy_samples'
 
 ### max amount of images-------------
 max_images                          = 1000000                                               # for if you only want to run a few images
@@ -143,7 +143,7 @@ def main():
     
     if use_multiprocessing:
         total_cpus = cpu_count()
-        num_workers = max(1, int(total_cpus * core_percentage / 100))
+        num_workers = max(1, int(total_cpus * core_percentage / 400))
         print(f"Using {num_workers}/{total_cpus} CPU cores...")
 
         with Pool(processes=num_workers) as pool:
