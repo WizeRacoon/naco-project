@@ -11,10 +11,11 @@ The source code can be found in the `src` folder. It contains the following file
 - data_processor.py: Processes the data from the CSV file and creates the image objects.
 - PSO.py: Contains the PSO code as described in the methodology of the report paper.
 - differential_function.py: As the name says, this is the differential function method as described in the methodology in the report paper.
-- segmentation.py: 'Cuts out' the lungs of a PSO processed image.
 
 ### Running the program
 Specify the experiment_name, the csv_file_path, and the images_directory. Then run `atelectasis.py`. We recommend to turn on multiprocessing to speed up execution.
+
+[!(Demonstration vidoe)](demonstration_naco.mp4)
 
 #### Parameters
 `atelectasis.py` contains a list of parameters you can tweak to define the experiment that you would like to run. Most of the parameters can be left as they are. 
