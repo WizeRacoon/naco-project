@@ -27,6 +27,7 @@ If the link above does not work, you can find the demonstration video in this re
 - csv_file_path: Defines the path where the CSV is placed.
 - images_directory: Defines the directory where the images over which you would like to perform PSO are placed.
 - apply_pso: Must be set to True if you would like to run PSO and not just the differential function.
+- apply_ga: Add Genetic Clustering to the PSO program.
 - N: Number of colors (set to 3: light, middle, and dark).
 - n: Number or particles.
 - max_iterations: The number of PSO iterations you would like to perform over an images.

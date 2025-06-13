@@ -43,6 +43,7 @@ max_images                          = 1000000                                   
 
 ### PSO------------------------------
 apply_pso                           = True
+apply_ga                            = True                                                  # apply genetic algorithm to the PSO
 
 n                                   = 20                                                    # number of palettes (particles)
 N                                   = 3                                                     # number of colors in each palette
@@ -96,7 +97,8 @@ def process_image(image_data_object):
             image_path=f"{images_directory}/{image_data_object.image_index}",
             max_iterations=max_iterations,
             output_directory=pso_output_directory,
-            save_iteration_list=save_iteration_list
+            save_iteration_list=save_iteration_list,
+            apply_ga=apply_ga
         )
         
     # Preventing an error for if the pso converges earlier then on_pso_iteration amount of iterations, and a later iteration does not exist
