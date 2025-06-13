@@ -2,7 +2,6 @@ import differential_function_helpers.further_segmentation_helper as fsh, differe
 import os
 import cv2
 import numpy as np
-from collections import defaultdict
 from multiprocessing import Pool, cpu_count
 
 def full_segmentation(image_name, image, save_symmetry_line, save_intermediate_steps, differential_directory):

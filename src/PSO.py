@@ -2,7 +2,7 @@ import os
 import numpy as np
 from scipy.spatial.distance import cdist
 from sklearn.metrics.pairwise import manhattan_distances
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 import matplotlib
 import cv2
 

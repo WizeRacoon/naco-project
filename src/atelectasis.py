@@ -3,9 +3,7 @@
 import data_processor as dp, PSO as pso, differential_function as df
 import os
 from multiprocessing import Pool, cpu_count
-import random
 import cv2
-from collections import defaultdict
 
 # Data Filters ==================================================================================
 # Here, you can adjust which data to consider. If you want to consider all data of a class, just state the list ["any"] (this cannot be done for the "labels" class)
@@ -52,7 +50,7 @@ max_iterations                      = 5                                         
 pso_output_directory                = f"{experiment_name}/PSO/images"
 save_iteration_list                 = [1,5]                                                 # list of PSO iterations to be saved as an image
 
-save_pso_overlay                    = False                                                 # for every pso image in save_iteration_list; saves the pso overlay as a cutout onto the original image in the folder of that pso image
+save_pso_overlay                    = True                                                  # for every pso image in save_iteration_list; saves the pso overlay as a cutout onto the original image in the folder of that pso image
 
 
 ### differential function------------
@@ -102,10 +100,18 @@ def process_image(image_data_object):
         )
         
     # Preventing an error for if the pso converges earlier then on_pso_iteration amount of iterations, and a later iteration does not exist
-    for i in range(on_pso_iteration):
-        if os.path.isfile(f"{pso_output_directory}/{image_name}/lung_position_clip/velocity_clip/lung_reconstructed_palette_iter_{on_pso_iteration - i}.png"):
-            pso_iteration = on_pso_iteration - i
-        i += 1
+    # Find the most recent valid PSO iteration result (up to on_pso_iteration)
+    pso_iteration = None
+    for i in range(on_pso_iteration, 0, -1):
+        candidate_path = f"{pso_output_directory}/{image_name}/lung_position_clip/velocity_clip/lung_reconstructed_palette_iter_{i}.png"
+        if os.path.isfile(candidate_path):
+            pso_iteration = i
+            break
+
+    # If none found, raise an error or skip (depending on what behavior you want)
+    if pso_iteration is None:
+        print(f"[{image_name}] - No valid PSO iteration result found up to iteration {on_pso_iteration}")
+        return image_data_object  # or raise an error if critical
         
     if save_pso_overlay:
         for iteration in save_iteration_list:
